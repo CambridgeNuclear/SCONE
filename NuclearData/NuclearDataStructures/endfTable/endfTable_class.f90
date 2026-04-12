@@ -36,7 +36,8 @@ module endfTable_class
   !! Interface:
   !!   at   -> return y-value given x-value
   !!   init -> initialise from components
-  !!   intagral -> Integrate table from x_min to multiple values x
+  !!   integral -> Integrate table from x_min to multiple values x
+  !!   hasX -> Check on whether a given x value is within grid bounds
   !!   reloadY -> Change values on y-axis keeping x & interpolation unchanged
   !!   kill -> return to uninitalised state
   !!
@@ -54,6 +55,7 @@ module endfTable_class
     procedure :: at
     procedure :: integral
     procedure :: reloadY
+    procedure :: hasX
     generic   :: init => initSimple, initInter
     procedure :: kill
 
@@ -194,6 +196,26 @@ contains
     end select
 
   end function at
+
+  !!
+  !! Returns whether a given x value is within bounds.
+  !! Made to help deal with inconsistent nuclear data. Allows checking that a grid
+  !! extends up to a certain value before attempting to get a y-value in that region.
+  !!
+  function hasX(self, x) result(has)
+    class(endfTable), intent(in) :: self
+    real(defReal), intent(in)    :: x
+    logical(defBool)             :: has
+    integer(shortInt)            :: x_idx
+  
+    x_idx = floorSearch(self % x, x)
+    if (x_idx < 0) then
+      has = .false.
+    else
+      has = .true.
+    end if
+
+  end function hasX
 
   !!
   !! Change values in y-axis without any othe change

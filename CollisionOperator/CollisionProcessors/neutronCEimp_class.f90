@@ -2,7 +2,8 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : nameUFS, nameWW, REJECTED, kBoltzmannMev
+  use universalVariables,            only : nameUFS, nameWW, REJECTED, kBoltzmannMev, MINIMUM_ENERGY, &
+                                            MAXIMUM_ENERGY
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -167,8 +168,8 @@ contains
 
     ! Read settings for neutronCEimp
     ! Maximum and minimum energy
-    call dict % getOrDefault(self % minE,'minEnergy',1.0E-11_defReal)
-    call dict % getOrDefault(self % maxE,'maxEnergy',20.0_defReal)
+    call dict % getOrDefault(self % minE,'minEnergy',MINIMUM_ENERGY)
+    call dict % getOrDefault(self % maxE,'maxEnergy',MAXIMUM_ENERGY)
 
     ! Thermal scattering kernel thresholds
     call dict % getOrDefault(self % threshE, 'energyThreshold', 400.0_defReal)

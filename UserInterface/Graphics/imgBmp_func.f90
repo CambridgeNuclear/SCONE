@@ -3,11 +3,11 @@
 !!
 !! Only 24-bit Color Bitmaps (without any compression or color palette data) can be created.
 !!
-!! It is not ideal due to large size of the BMP files. However, the purpose of theese functions
-!! is to provide some image creataion capability without external dependencies.
+!! It is not ideal due to large size of the BMP files. However, the purpose of these functions
+!! is to provide some image creation capability without external dependencies.
 !!
 !! Implementation should work even when the Fortran compiler prints data in big-endian format.
-!! (I guess it depends on the compiler+system combination. I do wander what gfortran would
+!! (I guess it depends on the compiler+system combination. I do wonder what gfortran would
 !!  do for the bi-endian CPU)
 !!
 !! Has been based on:

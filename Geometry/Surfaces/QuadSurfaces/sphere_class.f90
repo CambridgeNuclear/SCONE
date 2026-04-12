@@ -47,6 +47,7 @@ module sphere_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
   end type sphere
 
@@ -195,6 +196,21 @@ contains
     halfspace = dot_product(r - self % origin, u) >= ZERO
 
   end function going
+  
+  !!
+  !! Return the normal corresponding to the sphere surface
+  !!
+  pure function normal(self, r, u) result(n)
+    class(sphere), intent(in)               :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+
+    n = r - self % origin
+    n = n / norm2(n)
+
+  end function normal
+
 
   !!
   !! Return to uninitialised state

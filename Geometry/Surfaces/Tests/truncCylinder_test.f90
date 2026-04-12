@@ -485,6 +485,78 @@ contains
     @assertEqual(ref, this % surf % distance(r, u), ref * TOL)
 
   end subroutine testDistance
+  
+  !!
+  !! Test normal calculation
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testNormal(this)
+    class(test_truncCylinder), intent(inout) :: this
+    integer(shortInt)                   :: ax, p1, p2
+    real(defReal), dimension(3)         :: r, u, n
+    real(defReal), parameter            :: TOL = 1.0E-7
+    
+    ! Get axis and diffrent planar directions
+    ax = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
+
+    u = [0.3, 0.2, 5.0]
+
+    ! Test on cylindrical surface
+    r(p1) = ONE + TWO
+    r(p2) = TWO
+    r(ax) = TWO
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(ONE, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+
+    r(p1) = ONE - sqrt(TWO)
+    r(p2) = TWO + sqrt(TWO)
+    r(ax) = TWO
+    
+    n = this % surf % normal(r, u)
+
+    @assertEqual(-ONE / sqrt(TWO), n(p1), TOL)
+    @assertEqual(ONE / sqrt(TWO), n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+
+    ! Test on a circle surface
+    r(p1) = ONE + ONE
+    r(p2) = TWO + HALF
+    r(ax) = TWO + 1.5_defReal 
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(ONE, n(ax), TOL)
+
+    r(p1) = ONE + 1.1_defReal
+    r(p2) = TWO - 0.3_defReal
+    r(ax) = TWO - 1.5_defReal 
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(-ONE, n(ax), TOL)
+
+    ! Test on the edge
+    r(p1) = ONE + TWO
+    r(p2) = TWO
+    r(ax) = HALF
+
+    n = this % surf % normal(r, u)
+    
+    @assertEqual(ONE / sqrt(TWO), n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(-ONE / sqrt(TWO), n(ax), TOL)
+
+  end subroutine testNormal
 
    !!
    !! Test Edge Cases

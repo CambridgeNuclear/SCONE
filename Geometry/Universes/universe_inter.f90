@@ -38,11 +38,12 @@ module universe_inter
   !!   }
   !!
   !! Private Members:
-  !!   uniId   -> Id of the universe
-  !!   uniIdx  -> Index of the universe
-  !!   origin  -> Location of the origin of the universe co-ordinates in the frame of higher universe
-  !!   rotMat  -> Rotation matrix for rotation with respect to the higher universe
-  !!   rot     -> rotation flag. True is universe is rotated
+  !!   uniId       -> Id of the universe
+  !!   uniIdx      -> Index of the universe
+  !!   origin      -> Location of the origin of the universe co-ordinates in the frame of higher universe
+  !!   rotMat      -> Rotation matrix for rotation with respect to the higher universe
+  !!   rot         -> rotation flag. True if universe is rotated
+  !!   globalTrans -> global transformation flag. True if universe coordinates should be evaluated in global frame
   !!
   !! Interface:
   !!   id           -> Get Id of the universe
@@ -60,11 +61,12 @@ module universe_inter
   !!
   type, public, abstract :: universe
     private
-    integer(shortInt)             :: uniId  = 0
+    integer(shortInt), public     :: uniId  = 0
     integer(shortInt)             :: uniIdx = 0
     real(defReal), dimension(3)   :: origin = ZERO
     real(defReal), dimension(3,3) :: rotMat = ZERO
     logical(defBool)              :: rot    = .false.
+    logical(defBool)              :: globalTrans = .false.
   contains
     ! Build procedures
     procedure, non_overridable :: id
@@ -81,6 +83,8 @@ module universe_inter
     procedure(distance), deferred   :: distance
     procedure(cross), deferred      :: cross
     procedure(cellOffset), deferred :: cellOffset
+    procedure                       :: transformToGlobal
+    procedure(getNormal), deferred  :: getNormal
   end type universe
 
   abstract interface
@@ -208,6 +212,25 @@ module universe_inter
       type(coord), intent(in)     :: coords
       real(defReal), dimension(3) :: offset
     end function cellOffset
+    
+    !!
+    !! Return normal for the given surfIdx at a given point
+    !!
+    !! Args:
+    !!   surfIdx [in] -> Idx of surface being crossed
+    !!   coords [in]  -> Coordinates placed in the universe (after transformations and with
+    !!     local ID set).
+    !!
+    !! Result:
+    !!   Surface normal (3D position vector).
+    !!
+    function getNormal(self, surfIdx, coords) result (normal)
+      import :: universe, shortInt, coord, defReal
+      class(universe), intent(in)   :: self
+      integer(shortInt), intent(in) :: surfIdx
+      type(coord), intent(in)       :: coords
+      real(defReal), dimension(3)   :: normal
+    end function getNormal
 
   end interface
 
@@ -316,6 +339,11 @@ contains
       call self % setTransform(rotation=temp)
     end if
 
+    ! Load global translation
+    if (dict % isPresent('global')) then
+      call dict % get(self % globalTrans, 'global')
+    end if
+
   end subroutine setupBase
 
   !!
@@ -401,13 +429,28 @@ contains
   subroutine kill(self)
     class(universe), intent(inout) :: self
 
-    self % uniIdx = 0
-    self % uniId  = 0
-    self % origin = ZERO
-    self % rotMat = ZERO
-    self % rot    = .false.
+    self % uniIdx      = 0
+    self % uniId       = 0
+    self % origin      = ZERO
+    self % rotMat      = ZERO
+    self % rot         = .false.
+    self % globalTrans = .false.
 
   end subroutine kill
+  
+  !!
+  !! Should co-ordinates be transformed to the global frame?
+  !!
+  !! Args:
+  !!  doTrans -> Bool deciding whether to transform the co-ordinates 
+  !!
+  function transformToGlobal(self) result(doTrans)
+    class(universe), intent(in) :: self
+    logical(defBool)            :: doTrans
+
+    doTrans = self % globalTrans
+
+  end function transformToGlobal
 
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Utility Functions
