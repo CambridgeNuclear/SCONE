@@ -393,9 +393,9 @@ contains
         else
 
           ! Update nuclide cache if needed
-          !!if (E /= nucCache % E_tot .or. temp /= materialCache(self % matIdx) % T_tot) then
+          if (E /= nucCache % E_tot .or. temp /= materialCache(self % matIdx) % T_tot) then
             call self % data % updateTotalNucXS(E, nucIdx, kT, rand)
-          !!end if
+          end if
           totNucXS = nucCache % xss % total
 
         end if
@@ -440,7 +440,6 @@ contains
 
           end if
 
-          materialCache(self % matIdx) % T_tot = temp
           return
 
         end if
