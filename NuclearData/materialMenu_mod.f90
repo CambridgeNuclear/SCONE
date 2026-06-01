@@ -46,8 +46,7 @@ module materialMenu_mod
   !!   T -> Evaluation number
   !!   hasSab -> Does the nuclide have S(a,b) data?
   !!   sabMix -> Does the nuclide mix S(a,b) data?
-  !!   file_Sab1 -> First (and maybe only) S(a,b) file
-  !!   file_Sab2 -> Second S(a,b) file
+  !!   file_Sab -> Array of S(a,b) file names (generally >1 for stochastic interpolation)
   !!
   !! Interface:
   !!   init -> build from a string
@@ -58,8 +57,7 @@ module materialMenu_mod
     integer(shortInt)  :: T = -1
     logical(defBool)   :: hasSab = .false.
     logical(defBool)   :: sabMix = .false.
-    character(nameLen) :: file_Sab1
-    character(nameLen) :: file_Sab2
+    character(nameLen), allocatable, dimension(:) :: file_Sab
   contains
     procedure :: init   => init_nuclideInfo
     procedure :: toChar => toChar_nuclideInfo
@@ -354,17 +352,11 @@ contains
         ! Check for stochastic mixing - this will depend on the
         ! size of the array of files produce
         call moderDict % get(filenames, keys(i))
-        if (size(filenames) == 2) then
-          self % nuclides(i) % file_Sab1 = filenames(1)
-          self % nuclides(i) % file_Sab2 = filenames(2)
-          self % nuclides(i) % sabMix = .true.
-        elseif (size(filenames) == 1) then
-          self % nuclides(i) % file_Sab1 = filenames(1)
-        else
-          print *,filenames
-          call fatalError(Here,'Unexpectedly long moder contents. Should be 1 or 2 '//&
-                  'entries.')
-        end if
+        allocate(self % nuclides(i) % file_Sab(size(filenames)))
+        self % nuclides(i) % file_Sab = filenames
+        if (size(filenames) > 1) self % nuclides(i) % sabMix = .true.
+        filenames = ''
+        deallocate(filenames)
       end if
 
       ! Initialise the nuclides

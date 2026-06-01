@@ -2,6 +2,7 @@ module thermalScatterInelastic_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,           only : MAXIMUM_ENERGY, MINIMUM_ENERGY
   use genericProcedures,            only : binarySearch, fatalError, numToChar, endfInterpolate, searchError
   use RNG_class,                    only : RNG
   use dataDeck_inter,               only : dataDeck
@@ -295,9 +296,12 @@ contains
 
     end if
 
-    if (E_out > 20.0 .or. E_out <= ZERO) then
+    if (E_out > MAXIMUM_ENERGY .or. E_out <= ZERO) then
       call fatalError(Here,'Failed to find energy: '//numToChar(E_out))
     end if
+
+    ! Allow energies lower than 1E-11 to be sampled, but floor to the minimum
+    E_out = max(E_out, MINIMUM_ENERGY)
 
     ! Sample phi
     phi = rand % get() * TWO_PI

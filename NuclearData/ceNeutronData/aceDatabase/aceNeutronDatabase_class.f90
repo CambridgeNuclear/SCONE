@@ -10,6 +10,7 @@ module aceNeutronDatabase_class
   use RNG_class,          only : RNG
   use charMap_class,      only : charMap
   use intMap_class,       only : intMap
+  use hashFunctions_func, only : FNV_1
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,        only : nuclearDatabase
@@ -927,19 +928,21 @@ contains
     type(materialItem), pointer                      :: mat
     class(ceNeutronDatabase), pointer                :: ptr_ceDatabase
     type(charMap)                                    :: nucSet
+    type(dictionary)                                 :: sabDict
     type(aceCard)                                    :: ACE
-    type(aceSabCard)                                 :: ACE_Sab1, ACE_Sab2
+    type(aceSabCard), dimension(:), allocatable      :: ACE_Sab
+    character(nameLen), dimension(:), allocatable    :: fileNames
     character(pathLen)                               :: aceLibPath
-    character(nameLen)                               :: name, name_file1, name_file2, nucDBRC_temp
-    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx, idx1, idx2
+    character(nameLen)                               :: nucDBRC_temp, name
+    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
     character(nameLen),dimension(:),allocatable      :: nucDBRC
     real(defReal)                                    :: A, nuckT, eUpSab, eUpSabNuc, &
                                                         eLowURR, eLowUrrNuc, alpha, &
-                                                        deltakT, eUpper, eLower, kT, &
-                                                        temp
+                                                        deltakT, eUpper, eLower, &
+                                                        temp, kT
     real(defReal), dimension(2)                      :: sabT
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
@@ -960,6 +963,9 @@ contains
     ptr_ceDatabase => ceNeutronDatabase_CptrCast(ptr)
     if(.not.associated(ptr_ceDatabase)) call fatalError(Here,"Should not happen. WTF?!")
 
+    ! Initialise dictionary to store S(a,b) info
+    call sabDict % init(1)
+
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
     do i = 1, mm_nMat()
@@ -970,6 +976,11 @@ contains
       do j = 1, size(mat % nuclides)
         name = self % makeNuclideName(mat % nuclides(j))
         call nucSet % add(name, IN_SET)
+
+        ! Add S(alpha,beta) data
+        if (mat % nuclides(j) % hasSab) then
+          call sabDict % store(name, mat % nuclides(j) % file_Sab)
+        end if
       end do
     end do
 
@@ -1042,41 +1053,41 @@ contains
     nucIdx = 1
     do while (i /= nucSet % end())
 
-      idx1 = index(nucSet % atKey(i),'+')
-      idx2 = index(nucSet % atKey(i),'#')
-      if (idx1 /= 0) then
-        name = trim(nucSet % atKey(i))
-        if (idx2 == 0) then
-          name_file1 = trim(name(idx1+1:nameLen))
-        else
-          name_file1 = trim(name(idx1+1:idx2-1))
-          name_file2 = trim(name(idx2+1:nameLen))
-        end if
-        name = name(1:idx1-1)
-      else
-        name = nucSet % atKey(i)
+      name = trim(nucSet % atKey(i))
+      
+      ! Get Sab filenames
+      if (sabDict % isPresent(name)) then
+        call sabDict % get(fileNames, name)
+
+        ! Truncate name to remove hash
+        idx = index(name,'_')
+        if (idx == 0) call fatalError(Here,'Failed to parse Sab nuclide: '//name)
+        name = name(1:idx-1)
       end if
 
       if (loud) then
         call statusMsg("Building: "// trim(name)// " with index: " //numToChar(nucIdx))
-        if (idx1 /= 0 .and. idx2 == 0) &
-            call statusMsg("including S(alpha,beta) tables with file: " //trim(name_file1))
-        if (idx1 /= 0 .and. idx2 /= 0) &
-            call statusMsg("including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2))
+        if (allocated(fileNames)) then
+          call statusMsg("including S(alpha,beta) tables with files: ")
+          do idx = 1, size(fileNames)
+            call statusMsg(fileNames(idx))
+          end do
+        end if
       end if
 
       call new_neutronACE(ACE, name)
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
 
       ! Initialise S(alpha,beta) tables
-      if (idx1 /= 0 ) then
-        call new_moderACE(ACE_Sab1, name_file1)
-        if (idx2 /= 0) then
-          call new_moderACE(ACE_Sab2, name_file2)
-          call self % nuclides(nucIdx) % initSab(ACE_Sab1, ACE_Sab2)
-        else
-          call self % nuclides(nucIdx) % initSab(ACE_Sab1)
-        end if
+      if (allocated(fileNames)) then
+        allocate(ACE_Sab(size(fileNames)))
+        do idx = 1, size(fileNames)
+          call new_moderACE(ACE_Sab(idx), fileNames(idx))
+        end do
+        call self % nuclides(nucIdx) % initSab(ACE_Sab)
+        fileNames = ''
+        deallocate(fileNames)
+        deallocate(ACE_Sab)
       end if
 
       ! Initialise probability tables
@@ -1125,7 +1136,7 @@ contains
           kT = mat % T * kBoltzmannMev
           if ((kT < sabT(1)) .or. (kT > sabT(2))) call fatalError(Here,&
                 'Material temperature must be bounded by the provided S(alpha,beta) data. '//&
-                'The material temperature is '//numToChar(kT / kBoltzmannMeV)//&
+                'The material temperature is '//numToChar(mat % T)//&
                 'K while the data bounds are '//numToChar(sabT(1) / kBoltzmannMeV)//&
                 'K and '//numToChar(sabT(2) / kBoltzmannMeV)//'K.')
         end if
@@ -1219,7 +1230,8 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     type(nuclideInfo), intent(in)         :: nuclide
     character(nameLen)                    :: name
-    character(:), allocatable             :: file
+    character(:), allocatable             :: extension
+    integer(shortInt)                     :: i, hash
 
     name = trim(nuclide % toChar())
 
@@ -1228,17 +1240,13 @@ contains
     ! scattering
     if (nuclide % hasSab) then
 
-      file = trim(nuclide % file_Sab1)
-      name = trim(name) // '+' // file
-      deallocate(file)
+      extension = ''
+      do i = 1, size(nuclide % file_Sab)
+        extension = trim(extension)//'_'// trim(nuclide % file_Sab(i))
+      end do
 
-      ! Attach second Sab file for stochastic mixing
-      if (nuclide % sabMix) then
-        file = trim(nuclide % file_Sab2)
-        name = trim(name) // '#' // file
-        deallocate(file)
-      end if
-
+      call FNV_1(extension, hash)
+      name = trim(name) //'_'// numToChar(hash)
     end if
 
   end function makeNuclideName

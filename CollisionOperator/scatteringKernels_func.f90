@@ -1,9 +1,10 @@
 module scatteringKernels_func
 
   use numPrecision
-  use genericProcedures, only : rotateVector
-  use RNG_class,         only : RNG
-  use particle_class,    only : particle
+  use universalVariables, only : MINIMUM_ENERGY
+  use genericProcedures,  only : rotateVector
+  use RNG_class,          only : RNG
+  use particle_class,     only : particle
 
   ! Nuclear Data
   use ceNeutronNuclide_inter, only : ceNeutronNuclide
@@ -53,7 +54,8 @@ contains
     mu = (A*mu + 1)*sqrt(E_in/E)* inv_Ap1
 
     ! Correct possible nuclear data shortcomings
-    if (mu > ONE) mu = ONE
+    mu = min(mu, ONE)
+    E = max(E, MINIMUM_ENERGY)
 
   end subroutine asymptoticScatter
 
@@ -87,7 +89,8 @@ contains
     mu = mu * sqrt(E_out/E) + sqrt(E_in/E)* inv_Ap1
 
     ! Correct possible nuclear data shortcomings
-    if (mu > ONE) mu = ONE
+    mu = min(mu, ONE)
+    E = max(E, MINIMUM_ENERGY)
 
   end subroutine asymptoticInelasticScatter
 

@@ -80,9 +80,9 @@ contains
 
     ! Get nuclides
     O16  => aceNeutronNuclide_CptrCast( data % getNuclide(1))
-    H1   => aceNeutronNuclide_CptrCast( data % getNuclide(2))
+    C12  => aceNeutronNuclide_CptrCast( data % getNuclide(2))
     H1_2 => aceNeutronNuclide_CptrCast( data % getNuclide(3))
-    C12  => aceNeutronNuclide_CptrCast( data % getNuclide(4))
+    H1   => aceNeutronNuclide_CptrCast( data % getNuclide(4))
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test scattering tables
@@ -158,8 +158,8 @@ contains
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test getting XSs
     ! H-1
-    nuc  => ceNeutronNuclide_CptrCast(data % getNuclide(2))
-    nuclideCache(2) % E_tot = ONE
+    nuc  => ceNeutronNuclide_CptrCast(data % getNuclide(4))
+    nuclideCache(4) % E_tot = ONE
 
     call nuc % getMicroXSs(microXSs, 1.8E-6_defReal, ZERO, p % pRNG)
 

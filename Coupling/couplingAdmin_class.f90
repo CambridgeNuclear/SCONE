@@ -38,9 +38,11 @@ module couplingAdmin_class
   !! - output the results of those tallies to an appropriate location
   !! - know the location of fields provided by other physics and update them in SCONE
   !! - possibly provide checks on validity of information fed back to SCONE
+  !! - decide whether to continue coupling during active cycles
   !! 
   !! Private members:
   !! isCoupled       -> flag for whether coupling is being performed
+  !! endWhenActive   -> flag to end coupling when moving to active cycles
   !! commFileIn      -> path to the file which triggers a SCONE calculation by the driver
   !! commFileOut     -> path to the file which SCONE outputs to the driver on completing a calculation
   !! outputFile      -> path to the file which SCONE outputs containing results to be used by the driver
@@ -56,6 +58,7 @@ module couplingAdmin_class
   !! kill          -> clean up
   !! couple        -> performs the main coupling logic
   !! endCoupling   -> deactivates coupling
+  !! moveToActive  -> informs admin of shift to active cycles, ending coupling if needs be
   !!
   !! doCoupling          -> returns a logical if coupling is happening
   !! attachTally         -> attach coupling tallies to another tallyAdmin used by a physics package
@@ -74,6 +77,7 @@ module couplingAdmin_class
   type, public :: couplingAdmin
     private
     logical(defBool)   :: isCoupled = .false.
+    logical(defBool)   :: endWhenActive = .true.
     character(pathLen) :: commFileIn  = ''
     character(pathLen) :: commFileOut = ''
     character(pathLen) :: outputFile  = ''
@@ -89,6 +93,7 @@ module couplingAdmin_class
     procedure :: kill
     procedure :: couple
     procedure :: endCoupling
+    procedure :: moveToActive
 
     ! Status checks
     procedure :: doCoupling
@@ -114,7 +119,7 @@ contains
   !!
   subroutine init(self, dict)
     class(couplingAdmin), intent(inout) :: self
-    class(dictionary), intent(in)       :: dict
+    type(dictionary), intent(in)        :: dict
     integer(shortInt)                   :: i, nFields, j
     logical(defBool)                    :: found
     class(dictionary), pointer          :: tallyDict
@@ -126,6 +131,9 @@ contains
     ! Read communication details
     call dict % get(self % commFileIn, 'receiveFile')
     call dict % get(self % commFileOut, 'sendFile')
+
+    ! Read whether to end when active
+    call dict % getOrDefault(self % endWhenActive, 'endActive', .true.)
 
     ! Read how often to exchange data
     call dict % get(self % updateFreq, 'updateFreq')
@@ -195,6 +203,7 @@ contains
     class(couplingAdmin), intent(inout) :: self
 
     self % isCoupled = .false.
+    self % endWhenActive = .true.
     self % updateFreq = 0
     self % commFileIn  = ''
     self % commFileOut = ''
@@ -278,6 +287,23 @@ contains
     end if
 
   end subroutine endCoupling
+
+  !!
+  !! Signals to admin that active cycles have begun
+  !! Decides whether coupling should end.
+  !! If it continues, attach the active tally
+  !!
+  subroutine moveToActive(self, tallyPtr)
+    class(couplingAdmin), intent(inout)       :: self
+    type(tallyAdmin), pointer, intent(inout)  :: tallyPtr
+
+    if (self % endWhenActive) then
+      call self % endCoupling()
+    else
+      call self % attachTally(tallyPtr)
+    end if
+
+  end subroutine moveToActive
 
   !!
   !! Returns whether to perform a physics update based on iteration number
@@ -412,8 +438,8 @@ contains
   !! Attach coupling tallies to another tally
   !!
   subroutine attachTally(self, tallyPtr)
-    class(couplingAdmin), intent(in)         :: self
-    type(tallyAdmin), pointer, intent(inout) :: tallyPtr
+    class(couplingAdmin), intent(in)          :: self
+    type(tallyAdmin), pointer, intent(inout)  :: tallyPtr
     
     if (self % doCoupling()) then
       call tallyPtr % push(self % tally)

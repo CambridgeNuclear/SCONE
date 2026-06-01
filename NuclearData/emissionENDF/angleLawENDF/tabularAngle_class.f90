@@ -96,6 +96,10 @@ contains
     character(100),parameter          :: Here='sample (tabularAngle_class.f90)'
 
     idx = binarySearch(self % eGrid,E)
+    if (idx < 1) then
+      print *, 'FUCK'
+      print *, E
+    end if
     call searchError(idx,Here)
 
     eps = (E - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))

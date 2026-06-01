@@ -150,7 +150,7 @@ contains
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % buildActiveAtch()
-    call self % couplingInfo % endCoupling()
+    call self % couplingInfo % moveToActive(self % activeTally)
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
     
     ! Collect results from other processes

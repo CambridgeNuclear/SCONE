@@ -138,8 +138,10 @@ contains
       ! We need to consider the case where there is only one child in a node
       ! (can happen when the size is even). If child is the last element it is the
       ! node with no sibling
-      if (child /= self % size .and. self % heap(child) < self % heap(child + 1)) then
-        child = child + 1
+      if (child /= self % size) then
+        if (self % heap(child) < self % heap(child + 1)) then
+          child = child + 1
+        end if
       end if
 
       ! If the parent is larger than the larger child we are done

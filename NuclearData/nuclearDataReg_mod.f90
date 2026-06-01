@@ -291,7 +291,7 @@ contains
     if(idx == 0 ) then
       call fatalError(Here, trim(name)//' is was not defined. Cannot activate it!')
     else if(idx < 0) then
-      call fatalError(Here, '-ve idx from databaseNameMap. Quite immpossible. WTF?')
+      call fatalError(Here, '-ve idx from databaseNameMap. Quite impossible. WTF?')
     end if
 
     ! Make if it is not already made

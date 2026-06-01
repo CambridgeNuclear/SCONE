@@ -34,7 +34,7 @@ module charMap_class
   !! Implementation is based on intMap
   !!
   !! NOTE: Following structure can be used to loop over entire map
-  !!       But note that you CANNOT modifay entries with "add" inside this loop.
+  !!       But note that you CANNOT modify entries with "add" inside this loop.
   !!       Use "atSet" instead
   !! it = map % begin()
   !! do while (it /= map % end())

@@ -151,10 +151,12 @@ contains
 
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     
-    ! Deactivate coupling for active cycles
-    call self % couplingInfo % endCoupling()
+    ! Deactivate coupling for active cycles?
+    call self % couplingInfo % moveToActive(self % activeTally)
     
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
+
+    call self % couplingInfo % endCoupling()
 
     ! Collect results from other processes
     call self % inactiveTally % collectDistributed()

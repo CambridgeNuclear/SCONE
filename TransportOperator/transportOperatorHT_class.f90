@@ -131,11 +131,13 @@ contains
         ! Give error if the particle somehow ended in an undefined material
         case(UNDEF_MAT)
           print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in undefined material")
 
         ! Give error if the particle somehow ended in an overlap material
         case(OVERLAP_MAT)
           print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
 
         case default
@@ -251,12 +253,14 @@ contains
 
         ! Give error if the particle somehow ended in an undefined material
         case(UNDEF_MAT)
-          print*, 'Particle location: ', p % rGlobal()
+          print *, 'Particle location: ', p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in undefined material")
 
         ! Give error if the particle ended in an overlap material
         case(OVERLAP_MAT)
-          print*, 'Particle location: ', p % rGlobal()
+          print *, 'Particle location: ', p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
       
         case default

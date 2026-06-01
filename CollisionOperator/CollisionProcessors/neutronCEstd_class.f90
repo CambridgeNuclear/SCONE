@@ -273,7 +273,7 @@ contains
       r   = p % rGlobal()
 
       do i = 1, n
-        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
+        call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
         
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
@@ -363,7 +363,7 @@ contains
     character(100),parameter :: Here = 'elastic (neutronCEstd_class.f90)'
 
     ! Assess if thermal scattering data is needed or not
-    if (self % nuc % needsSabEl(p % E)) collDat % MT = N_N_ThermEL
+    if (self % nuc % needsSabEl(colLDat % E)) collDat % MT = N_N_ThermEL
 
     ! Get reaction
     reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
@@ -373,7 +373,7 @@ contains
     collDat % A =  self % nuc % getMass()
 
     ! Retrieve kT from either material or nuclide
-    if (self % mat % useTMS(p % E)) then
+    if (self % mat % useTMS(collDat % E)) then
       collDat % kT = self % mat % kT
     else
       collDat % kT = self % nuc % getkT()
@@ -383,7 +383,7 @@ contains
     ! Check is DBRC is on
     hasDBRC = self % nuc % hasDBRC()
 
-    isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % threshE) &
+    isFixed = (.not. hasDBRC) .and. (collDat % E > collDat % kT * self % threshE) &
               & .and. (collDat % A > self % threshA)
 
     ! Apply criterion for Free-Gas vs Fixed Target scattering
@@ -414,7 +414,7 @@ contains
     collDat % MT = self % nuc % invertInelastic(collDat % E, p % pRNG)
     reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if (.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
-
+    
     ! Scatter particle
     if (reac % inCMFrame()) then
       collDat % A =  self % nuc % getMass()
@@ -423,8 +423,8 @@ contains
       call self % scatterInLAB(p, collDat, reac)
     end if
 
-    ! Apply weigth change
-    p % w = p % w * reac % release(p % E)
+    ! Apply weight change using ingoing collision particle energy
+    p % w = p % w * reac % release(collDat % E)
 
   end subroutine inelastic
 
@@ -456,7 +456,7 @@ contains
     real(defReal)                             :: E_out, mu
 
     ! Sample scattering angles and post-collision energy
-    call reac % sampleOut(mu, phi, E_out, p % E, p % pRNG)
+    call reac % sampleOut(mu, phi, E_out, collDat % E, p % pRNG)
 
     ! Update neutron state
     p % E = E_out
@@ -483,10 +483,10 @@ contains
     MT = collDat % MT
 
     ! Sample mu, phi and outgoing energy
-    call reac % sampleOut(mu, phi, E_outCM, p % E, p % pRNG)
+    call reac % sampleOut(mu, phi, E_outCM, collDat % E, p % pRNG)
 
     ! Save incident energy
-    E_out = p % E
+    E_out = collDat % E
 
     if (MT == N_N_elastic) then
       call asymptoticScatter(E_out, mu, collDat % A)
@@ -530,11 +530,11 @@ contains
 
     ! Get neutron direction and velocity
     dir_pre = p % dirGlobal()
-    V_n     = dir_pre * sqrt(p % E)
+    V_n     = dir_pre * sqrt(collDat % E)
 
     ! Sample target velocity with constant XS or with DBRC
     ! Check energy range
-    inEnergyRange = ((p % E <= self % DBRCeMax) .and. (self % DBRCeMin <= p % E))
+    inEnergyRange = ((collDat % E <= self % DBRCeMax) .and. (self % DBRCeMin <= collDat % E))
     ! Check if DBRC is on for this target nuclide
     hasDBRC = self % nuc % hasDBRC()
 
@@ -548,14 +548,14 @@ contains
       if(.not.associated(ceNuc0K)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
       ! Get elastic scattering 0K majorant
-      maj = self % xsData % getScattMicroMajXS(p % E, kT, A, nucIdx)
+      maj = self % xsData % getScattMicroMajXS(collDat % E, kT, A, nucIdx)
 
       ! Use DBRC to sample target velocity
-      V_t = targetVelocity_DBRCXS(ceNuc0K, p % E, dir_pre, A, kT, p % pRNG, maj)
+      V_t = targetVelocity_DBRCXS(ceNuc0K, collDat % E, dir_pre, A, kT, p % pRNG, maj)
 
     else
       ! Constant cross section approximation
-      V_t = targetVelocity_constXS(p % E, dir_pre, A, kT, p % pRNG)
+      V_t = targetVelocity_constXS(collDat % E, dir_pre, A, kT, p % pRNG)
 
     end if
 
@@ -568,7 +568,7 @@ contains
     V_n = V_n / U_n
 
     ! Sample mu and phi in CM frame
-    call reac % sampleOut(mu, phi, dummy, p % E, p % pRNG)
+    call reac % sampleOut(mu, phi, dummy, collDat % E, p % pRNG)
 
     ! Obtain post collision speed
     V_n = rotateVector(V_n, mu, phi) * U_n
