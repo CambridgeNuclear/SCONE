@@ -197,7 +197,7 @@ contains
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
     call dict % getOrDefault(self % DBRCeMax,'DBRCeMax', (200E-6_defReal))
-    
+
     ! Precursor settings
     call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
     call dict % getOrDefault(self % neglectDelayed, 'neglectDelayed', .false.)
@@ -213,7 +213,7 @@ contains
       if (.not.self % implicitSites) call fatalError(Here,&
          'Must generate fission sites implicitly when using implicit absorption')
     end if
-    
+
     if (self % makePrec .and. self % neglectDelayed) call fatalError(Here,&
             'Incompatible options: cannot makePrecursors and neglectDelayed neutrons!')
 
@@ -253,12 +253,12 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronCE()
     if(.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
-    
+
     ! Avoid nuclide sampling if alpha absorption occurs
     denom = self % xsData % getTrackMatXS(p, p % matIdx())
     alphaXS = p % getAlphaAbsorption()
     probAlpha = alphaXS / denom
- 
+
     if (p % pRNG % get() < probAlpha) then
       collDat % E = p % E
       if (p % alpha >= 0) then
@@ -268,7 +268,7 @@ contains
       end if
       return
     end if
-    
+
     ! Verify and load material pointer
     self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
@@ -360,20 +360,20 @@ contains
       ! Store new sites in the next cycle dungeon
       r   = p % rGlobal()
 
-      do i = 1,n
-        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
-        
+      do i = 1, n
+        call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
+
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
-        
+
         ! If alpha, determine probability of keeping a delayed neutron
         if (abs(p % alpha) > epsilon(p % alpha)) then
           keepDel = p % pRNG % get() < lambda/(lambda + p % alpha)
           if (.not. keepDel) cycle
         end if
-        
+
         dir = rotateVector(p % dirGlobal(), mu, phi)
-        
+
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -405,7 +405,7 @@ contains
     ! Perform implicit absorption
     if (self % implicitAbsorption) then
 
-      if (.not.fiss_and_implicit) then
+      if (.not. fiss_and_implicit) then
         call self % nuc % getMicroXSs(microXSs, collDat % E, self % mat % kT, p % pRNG)
       end if
 
@@ -439,7 +439,7 @@ contains
     p % isDead =.true.
 
   end subroutine capture
-  
+
   !!
   !! Process fission reaction
   !!
@@ -459,7 +459,7 @@ contains
     real(defReal)                        :: sig_nufiss, sig_fiss, k_eff, kT, wD
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
-    if (.not.self % implicitSites) then
+    if (.not. self % implicitSites) then
 
       ! Obtain required data
       wgt   = p % w                ! Current weight
@@ -499,20 +499,20 @@ contains
       ! Store new sites in the next cycle dungeon
       r   = p % rGlobal()
 
-      do i=1,n
-        call fiss % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
-        
+      do i = 1, n
+        call fiss % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
+
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
-        
+
         ! If alpha, determine the weight of a delayed neutron
         wD = ONE
         if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
           wD = lambda/(lambda + p % alpha)
         end if
-        
+
         dir = rotateVector(p % dirGlobal(), mu, phi)
-        
+
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -562,17 +562,21 @@ contains
     character(100),parameter :: Here = 'elastic (neutronCEimp_class.f90)'
 
     ! Assess if thermal scattering data is needed or not
-    if (self % nuc % needsSabEl(p % E)) collDat % MT = N_N_ThermEL
+    ! Note that if using TMS, this check is performed with the sampled nuclide relative
+    ! energy rather than the original particle energy
+    if (self % nuc % needsSabEl(collDat % E)) collDat % MT = N_N_ThermEL
 
     ! Get reaction
-    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
 
     ! Retrieve kT from either material or nuclide
-    if (self % mat % useTMS(p % E)) then
+    ! Note that if using TMS, this check is performed with the sampled nuclide relative
+    ! energy rather than the original particle energy
+    if (self % mat % useTMS(collDat % E)) then
       collDat % kT = self % mat % kT
     else
       collDat % kT = self % nuc % getkT()
@@ -582,7 +586,7 @@ contains
     ! Check is DBRC is on
     hasDBRC = self % nuc % hasDBRC()
 
-    isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % threshE) &
+    isFixed = (.not. hasDBRC) .and. (collDat % E > collDat % kT * self % threshE) &
               & .and. (collDat % A > self % threshA)
 
     ! Apply criterion for Free-Gas vs Fixed Target scattering
@@ -609,9 +613,11 @@ contains
     class(uncorrelatedReactionCE), pointer :: reac
     character(100),parameter  :: Here =' inelastic (neutronCEimp_class.f90)'
 
-    ! Invert inelastic scattering and Get reaction
+    ! Invert inelastic scattering and get reaction
+    ! Note that if using TMS, this lookup (which might result in selecting a Sab reaction)
+    ! is performed with the sampled nuclide relative energy
     collDat % MT = self % nuc % invertInelastic(collDat % E, p % pRNG)
-    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
 
     ! Scatter particle
@@ -622,8 +628,8 @@ contains
       call self % scatterInLAB(p, collDat, reac)
     end if
 
-    ! Apply weigth change
-    p % w = p % w * reac % release(p % E)
+    ! Apply weigth change using ingoing collision particle energy
+    p % w = p % w * reac % release(collDat % E)
 
   end subroutine inelastic
 
@@ -751,7 +757,7 @@ contains
     nucIdx = collDat % nucIdx
 
     ! Sample scattering angles and post-collision energy
-    call reac % sampleOut(mu, phi, E_out, p % E, p % pRNG)
+    call reac % sampleOut(mu, phi, E_out, collDat % E, p % pRNG)
 
     ! Update neutron state
     p % E = E_out
@@ -779,7 +785,7 @@ contains
     nucIdx = collDat % nucIdx
 
     ! Sample mu , phi and outgoing energy
-    call reac % sampleOut(mu, phi, E_outCM, p % E, p % pRNG)
+    call reac % sampleOut(mu, phi, E_outCM, collDat % E, p % pRNG)
 
     ! Save incident energy
     E_out = p % E
@@ -828,11 +834,11 @@ contains
 
     ! Get neutron direction and velocity
     dir_pre = p % dirGlobal()
-    V_n     = dir_pre * sqrt(p % E)
+    V_n     = dir_pre * sqrt(collDat % E)
 
     ! Sample target velocity with constant XS or with DBRC
     ! Check energy range
-    inEnergyRange = ((p % E <= self % DBRCeMax) .and. (self % DBRCeMin <= p % E))
+    inEnergyRange = ((collDat % E <= self % DBRCeMax) .and. (self % DBRCeMin <= collDat % E))
     ! Check if DBRC is on for this target nuclide
     hasDBRC = self % nuc % hasDBRC()
 
@@ -846,14 +852,14 @@ contains
       if (.not.associated(ceNuc0K)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
       ! Get elastic scattering 0K majorant
-      maj = self % xsData % getScattMicroMajXS(p % E, kT, A, nucIdx)
+      maj = self % xsData % getScattMicroMajXS(collDat % E, kT, A, nucIdx)
 
       ! Use DBRC to sample target velocity
-      V_t = targetVelocity_DBRCXS(ceNuc0K, p % E, dir_pre, A, kT, p % pRNG, maj)
+      V_t = targetVelocity_DBRCXS(ceNuc0K, collDat % E, dir_pre, A, kT, p % pRNG, maj)
 
     else
       ! Constant cross section approximation
-      V_t = targetVelocity_constXS(p % E, dir_pre, A, kT, p % pRNG)
+      V_t = targetVelocity_constXS(collDat % E, dir_pre, A, kT, p % pRNG)
 
     end if
 
@@ -866,7 +872,7 @@ contains
     V_n = V_n / U_n
 
     ! Sample mu and phi in CM frame
-    call reac % sampleOut(mu, phi, dummy, p % E, p % pRNG)
+    call reac % sampleOut(mu, phi, dummy, collDat % E, p % pRNG)
 
     ! Obtain post collision speed
     V_n = rotateVector(V_n, mu, phi) * U_n

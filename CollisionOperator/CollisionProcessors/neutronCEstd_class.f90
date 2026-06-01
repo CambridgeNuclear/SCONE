@@ -131,7 +131,7 @@ contains
     ! Thermal scattering kernel thresholds
     call dict % getOrDefault(self % threshE, 'energyThreshold', 400.0_defReal)
     call dict % getOrDefault(self % threshA, 'massThreshold', 1.0_defReal)
-    
+
     ! Precursor settings
     call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
     call dict % getOrDefault(self % neglectDelayed, 'neglectDelayed', .false.)
@@ -173,12 +173,12 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronCE()
     if (.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
-    
+
     ! Avoid nuclide sampling if alpha absorption occurs
     denom = self % xsData % getTrackMatXS(p, p % matIdx())
     alphaXS = p % getAlphaAbsorption()
     probAlpha = alphaXS / denom
- 
+
     if (p % pRNG % get() < probAlpha) then
       collDat % E = p % E
       if (p % alpha >= 0) then
@@ -277,15 +277,15 @@ contains
         
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
-        
+
         ! If alpha, determine the weight of a delayed neutron
         wD = ONE
         if (abs(p % alpha) > epsilon(p % alpha) .and. lambda < huge(lambda)) then
           wD = lambda/(lambda + p % alpha)
         end if
-        
+
         dir = rotateVector(p % dirGlobal(), mu, phi)
-        
+
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -330,7 +330,7 @@ contains
     p % isDead =.true.
 
   end subroutine capture
-  
+
   !!
   !! Process fission reaction
   !!
@@ -363,16 +363,20 @@ contains
     character(100),parameter :: Here = 'elastic (neutronCEstd_class.f90)'
 
     ! Assess if thermal scattering data is needed or not
-    if (self % nuc % needsSabEl(colLDat % E)) collDat % MT = N_N_ThermEL
+    ! Note that if using TMS, this check is performed with the sampled nuclide relative
+    ! energy rather than the original particle energy
+    if (self % nuc % needsSabEl(collDat % E)) collDat % MT = N_N_ThermEL
 
     ! Get reaction
-    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if (.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
 
     ! Retrieve kT from either material or nuclide
+    ! Note that if using TMS, this check is performed with the sampled nuclide relative
+    ! energy rather than the original particle energy
     if (self % mat % useTMS(collDat % E)) then
       collDat % kT = self % mat % kT
     else
@@ -411,6 +415,8 @@ contains
     character(100),parameter  :: Here =' inelastic (neutronCEstd_class.f90)'
 
     ! Invert inelastic scattering and get reaction
+    ! Note that if using TMS, this lookup (which might result in selecting a Sab reaction)
+    ! is performed with the sampled nuclide relative energy
     collDat % MT = self % nuc % invertInelastic(collDat % E, p % pRNG)
     reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if (.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
@@ -439,7 +445,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-    if (p % E < self % minE ) p % isDead = .true.
+    if (p % E < self % minE) p % isDead = .true.
 
   end subroutine cutoffs
 
