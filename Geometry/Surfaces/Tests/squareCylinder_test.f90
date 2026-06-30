@@ -10,7 +10,6 @@ module squareCylinder_test
   !!
   !! Test parameter wrapper around AN INTEGER (bit of boilerplate)
   !!
-  !!
   @testParameter(constructor=newParam)
   type, extends (AbstractTestParameter) :: dirParam
      integer(shortInt) :: dir
@@ -327,10 +326,6 @@ contains
     @assertTrue(this % surf % halfspace(r + eps*u, u2))
     @assertFalse(this % surf % halfspace(r - eps*u, u2))
 
-    ! At the surface in diffrent quadrant
-
-
-
   end subroutine testHalfspace
 
   !!
@@ -416,6 +411,47 @@ contains
     @assertEqual(ref, this % surf % distance(r, -u), ref * TOL)
 
   end subroutine testDistance
+  
+  !!
+  !! Test normal calculation
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testNormal(this)
+    class(test_squareCylinder), intent(inout) :: this
+    integer(shortInt)                   :: ax, p1, p2
+    real(defReal), dimension(3)         :: r, u, n
+    
+    ! Get axis and different planar directions
+    ax = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
+
+    u = [0.3, 0.2, 5.0]
+    
+    ! Test on a plane
+    r(p1) = ONE + TWO
+    r(p2) = TWO
+    r(ax) = TWO
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(n(p1), ONE)
+    @assertEqual(n(p2), ZERO)
+    @assertEqual(n(ax), ZERO)
+
+
+    ! Test on an edge
+    r(p1) = ONE - TWO
+    r(p2) = TWO + 3.0_defReal
+    r(ax) = TWO
+    
+    n = this % surf % normal(r, u)
+
+    @assertEqual(n(p1), -ONE / sqrt(TWO))
+    @assertEqual(n(p2), ONE / sqrt(TWO))
+    @assertEqual(n(ax), ZERO)
+
+  end subroutine testNormal
 
   !!
   !! Test Edge Cases
@@ -431,7 +467,7 @@ contains
     real(defReal)               :: eps, d
     logical(defBool)            :: hs
 
-    ! Get axis and diffrent planar directions
+    ! Get axis and different planar directions
     ax = this % axis
     p1 = this % plane(1)
     p2 = this % plane(2)
@@ -444,7 +480,7 @@ contains
     u([ax, p1, p2]) = [ZERO, TWO, -ONE]
     u = u/norm2(u)
     hs = this % surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = this % surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(this % surf % halfspace(r + d*u, u))
@@ -454,19 +490,19 @@ contains
     u([ax, p1, p2]) = [ZERO, -ONE, TWO]
     u = u/norm2(u)
     hs = this % surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = this % surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(this % surf % halfspace(r + d*u, u))
     end if
 
-    ! Try asymertic corner
+    ! Try asymmetric corner
     ! Point is not exactly at the diagonal
     r([ax, p1, p2]) = [ZERO, -1.0_defReal+eps, -1.0_defReal+eps*TWO]
     u([ax, p1, p2]) = [ZERO, TWO, -ONE]
     u = u/norm2(u)
     hs = this % surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = this % surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(this % surf % halfspace(r + d*u, u))
@@ -477,7 +513,7 @@ contains
     u([ax, p1, p2]) = [ZERO, -ONE, TWO]
     u = u/norm2(u)
     hs = this % surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = this % surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(this % surf % halfspace(r + d*u, u))
