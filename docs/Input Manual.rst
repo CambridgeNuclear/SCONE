@@ -1023,6 +1023,8 @@ in this dictionary are:
 * maxIt: (*optional*, defaults to infinity) the maximum number of MC cycles that will take place before SCONE
   terminates the coupling. SCONE will continue to run, but it will signal to the external solver that coupling
   has finished and fields will no longer be updated.
+* endActive: (*optional*, defaults to false) decides whether to end coupling during active cycles. This can save
+  computational time due to the cost of communication, but it may also produce higher variance/bias results.
 
 An example of a coupling dictionary is: ::
 
@@ -1042,6 +1044,7 @@ An example of a coupling dictionary is: ::
       fields (temperature density);
       maxTemp 2000;
       maxIt 100;
+      endActive 1;
       }
 
 Visualiser
