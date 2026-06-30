@@ -83,7 +83,7 @@ contains
     real(defReal)               :: hw
     integer(shortInt)           :: orient
 
-    ! Select type of squareCylinder and axis
+    ! Select type of hexagon and axis
     orient = param % orient
     select case(param % dir)
       case(X_AXIS)
@@ -344,6 +344,7 @@ contains
     @assertEqual(r_ref, r, TOL)
     @assertEqual(u_ref, u, TOL)
 
+    ! TODO: Uncomment when reflective transformBCs work!
     ! Reflective
     !BC = REFLECTIVE_BC
     !call this % surf % setBC(BC)

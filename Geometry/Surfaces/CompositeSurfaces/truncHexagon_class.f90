@@ -38,9 +38,7 @@ module truncHexagon_class
   !! Halfheight is half the top-to-bottom distance.
   !!
   !! Boundary Conditions:
-  !!   Only a single BC value within the hexagon plane.
   !!   Any BC can be used along the axial direction.
-  !!
   !!   For now, each radial face must have the same BC. Supports either periodic or vacuum BCs.
   !!   TODO: add reflective transform BCs.
   !!
@@ -54,7 +52,7 @@ module truncHexagon_class
   !!   axis        -> Index of the axis of the plane
   !!   flatAxis    -> Index into plane, deciding which plane axis has the flat of the hexagon
   !!   pointAxis   -> Index into plane, deciding which plane axis has the point of the hexagon
-  !!   verts       -> Vertices of the hexagon
+  !!   verts       -> Vertices of the hexagon in the 2D plane
   !!
   !! Interface:
   !!   surface interface
@@ -122,8 +120,8 @@ contains
   !! See surface_inter for more details
   !!
   !! Errors:
-  !!  fatalError for -ve id or meaningful halfspace.
-  !!  fatalError for unrecognised oritnetation
+  !!  fatalError for -ve id or meaningless halfwidth.
+  !!  fatalError for unrecognised orientation
   !!
   subroutine init(self, dict)
     class(truncHexagon), intent(inout)       :: self
@@ -136,7 +134,7 @@ contains
 
     ! Load id
     call dict % get(id,'id')
-    if (id <= 0) call fatalError(Here, 'ID must be <= 0. Is: '//numToChar(id))
+    if (id <= 0) call fatalError(Here, 'ID must be > 0. Is: '//numToChar(id))
     call self % setID(id)
 
     ! Select type
@@ -361,7 +359,7 @@ contains
   !! Works by:
   !!  1) Determine a plane in which direction is the closest
   !!  2) Use normal for this plane and project distance
-  !!  3) Determinie halfspace based on sign of the projection
+  !!  3) Determine halfspace based on sign of the projection
   !!
   !! Note:
   !!   For parallel direction halfspace is assigned by the sign of `evaluate` result.
@@ -431,7 +429,7 @@ contains
     integer(shortInt)                       :: i
     real(defReal), dimension(3)             :: n0
     
-    ! Get position in the plane & direction
+    ! Get position in the plane
     rl = (r(self % plane) - self % origin(self % plane)) / self % halfwidth
 
     ! Which set of planes is being crossed?
@@ -447,12 +445,10 @@ contains
       ! Select normal from the face which is most violated
       if (dist > d + self % surfTol()) then
         d = dist
-        !nBest = nTrial * sign(ONE, rl * nTrial)
         nBest = nTrial * dot_product(rl, nTrial)
       
       ! Catch corners
       else if (abs(dist - d) < self % surfTol()) then
-        !nBest = nBest + nTrial * sign(ONE, rl * nTrial)
         nBest = nBest + nTrial * dot_product(rl, nTrial)
       end if
 

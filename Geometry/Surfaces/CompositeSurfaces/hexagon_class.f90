@@ -118,8 +118,8 @@ contains
   !! See surface_inter for more details
   !!
   !! Errors:
-  !!  fatalError for -ve id or meaningful halfspace.
-  !!  fatalError for unrecognised oritnetation
+  !!  fatalError for -ve id or meaningless halfwidth.
+  !!  fatalError for unrecognised orientation
   !!
   subroutine init(self, dict)
     class(hexagon), intent(inout)            :: self
@@ -132,7 +132,7 @@ contains
 
     ! Load id
     call dict % get(id,'id')
-    if (id <= 0) call fatalError(Here, 'ID must be <= 0. Is: '//numToChar(id))
+    if (id <= 0) call fatalError(Here, 'ID must be > 0. Is: '//numToChar(id))
     call self % setID(id)
 
     ! Select type
@@ -331,10 +331,10 @@ contains
   !! Works by:
   !!  1) Determine a plane in which direction is the closest
   !!  2) Use normal for this plane and project distance
-  !!  3) Determinie halfspace based on sign of the projection
+  !!  3) Determine halfspace based on sign of the projection
   !!
   !! Note:
-  !!   For parallel direction halfspace is assigned by the sign of `evaluate` result.
+  !!   For parallel direction, halfspace is assigned by the sign of `evaluate` result.
   !!
   pure function going(self, r, u) result(halfspace)
     class(hexagon), intent(in)              :: self
@@ -393,7 +393,7 @@ contains
     real(defReal)                           :: d, dist
     integer(shortInt)                       :: i
     
-    ! Get position in the plane & direction
+    ! Get position in the plane
     rl = r(self % plane) - self % origin
 
     ! Which set of planes is being crossed?
@@ -453,11 +453,13 @@ contains
     integer(shortInt), dimension(:), intent(in) :: BC
     character(100),parameter                    :: Here = 'setBC (hexagon_class.f90)'
 
-    if(size(BC) /= 6) call fatalError(Here, 'Wrong size of BC string. Must be 6')
-    if(all(BC /= BC(1))) call fatalError(Here, 'All BCs must be identical')
+    if (size(BC) /= 6) call fatalError(Here, 'Wrong size of BC string. Must be 6')
+    if (all(BC(self % plane) /= BC(self % plane + 3))) then
+      call fatalError(Here, 'All plane BCs must be identical')
+    end if
 
     ! Load BC codes
-    self % BC = BC(1)
+    self % BC = BC(self % plane(1))
 
     ! Verify that all BC flags make sense
     select case(self % BC)
@@ -493,7 +495,7 @@ contains
     real(defReal), dimension(2)                :: rl, e, v1, v2, n, nBest
     character(100), parameter :: Here = 'explicitBC (hexagon_class.f90)'
 
-    ! Get position in the plane & direction
+    ! Get position in the plane
     rl = r(self % plane) - self % origin
 
     maxProj = -INF
