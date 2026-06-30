@@ -8,7 +8,7 @@ module couplingAdmin_class
   use errors_mod,         only : fatalError
   use display_func,       only : statusMsg
   use genericProcedures,  only : numToChar
-  use timer_mod,          only : c_sleep
+  use timer_mod,          only : c_usleep
   
   use field_inter,              only : field
   use fieldFactory_func,        only : new_field
@@ -42,7 +42,7 @@ module couplingAdmin_class
   !! 
   !! Private members:
   !! isCoupled       -> flag for whether coupling is being performed
-  !! endWhenActive   -> flag to end coupling when moving to active cycles
+  !! endWhenActive   -> flag to end coupling when moving to active cycles (false by default)
   !! commFileIn      -> path to the file which triggers a SCONE calculation by the driver
   !! commFileOut     -> path to the file which SCONE outputs to the driver on completing a calculation
   !! outputFile      -> path to the file which SCONE outputs containing results to be used by the driver
@@ -77,7 +77,7 @@ module couplingAdmin_class
   type, public :: couplingAdmin
     private
     logical(defBool)   :: isCoupled = .false.
-    logical(defBool)   :: endWhenActive = .true.
+    logical(defBool)   :: endWhenActive = .false.
     character(pathLen) :: commFileIn  = ''
     character(pathLen) :: commFileOut = ''
     character(pathLen) :: outputFile  = ''
@@ -133,7 +133,7 @@ contains
     call dict % get(self % commFileOut, 'sendFile')
 
     ! Read whether to end when active
-    call dict % getOrDefault(self % endWhenActive, 'endActive', .true.)
+    call dict % getOrDefault(self % endWhenActive, 'endActive', .false.)
 
     ! Read how often to exchange data
     call dict % get(self % updateFreq, 'updateFreq')
@@ -203,7 +203,7 @@ contains
     class(couplingAdmin), intent(inout) :: self
 
     self % isCoupled = .false.
-    self % endWhenActive = .true.
+    self % endWhenActive = .false.
     self % updateFreq = 0
     self % commFileIn  = ''
     self % commFileOut = ''
@@ -402,7 +402,7 @@ contains
   subroutine waitForSignal(self)
     class(couplingAdmin), intent(inout) :: self
     logical(defBool)                    :: exists
-    integer(shortInt)                   :: unit
+    integer(shortInt)                   :: unit, ios
     character(nameLen)                  :: line
     character(100), parameter :: Here ='waitForSignal (couplingAdmin_class.f90)'
 
@@ -415,7 +415,13 @@ contains
         ! Read and delete the communication file
         open(newunit=unit, file=self % commFileIn, status="old")
 
-        read(unit, '(A)') line
+        read(unit, '(A)', iostat=ios) line
+
+        ! Make sure the file isn't partially written:
+        if (ios /= 0) then
+          call c_usleep(int(0.005 * 1E6))
+          cycle
+        end if
 
         ! Check whether to continue iteration or end coupling
         if (trim(adjustl(line)) == END_SIGNAL) then
@@ -428,7 +434,7 @@ contains
         return
       end if
       
-      call c_sleep(1)
+      call c_usleep(int(0.005 * 1E6))
 
     end do
 
