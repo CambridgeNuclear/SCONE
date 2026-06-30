@@ -565,7 +565,7 @@ contains
     real(defReal), dimension(2)                :: rl, e, v1, v2, n, nBest
     character(100), parameter :: Here = 'explicitBC (truncHexagon_class.f90)'
 
-    ! Get position in the plane & direction
+    ! Get position in the plane
     rl = r(self % plane) - self % origin(self % plane)
 
     maxProj = -INF
