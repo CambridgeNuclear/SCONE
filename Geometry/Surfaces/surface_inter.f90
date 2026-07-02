@@ -188,11 +188,10 @@ module surface_inter
     !!
     !! Args:
     !!  r [in] -> Position of the particle
-    !!  u [in] -> DIrection of the particle. Assume norm2(u) = 1.0
+    !!  u [in] -> Direction of the particle. Assume norm2(u) = 1.0
     !!
     !! Result:
     !!   Normal vector at the point, normalised
-    !!   in +ve direction, returns INF
     !!
     pure function normal(self, r, u) result(n)
       import :: surface, defReal

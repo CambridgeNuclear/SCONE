@@ -277,7 +277,7 @@ contains
     integer(shortInt), intent(in)  :: surfIdx
     type(coord), intent(in)        :: coords
     real(defReal), dimension(3)    :: normal
-    integer(shortInt)               :: cIdx
+    integer(shortInt)              :: cIdx
     character(100), parameter :: Here = 'getNormal (pinUniverse_class.f90)'
 
     ! Local ID and surfIdx should be sufficient to identify which annulus

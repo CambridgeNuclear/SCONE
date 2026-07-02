@@ -13,7 +13,7 @@ module numPrecision
   integer, public, parameter :: endOfFile = -1
 
 
-  ! Usefull constants
+  ! Useful constants
   real(defReal), public, parameter :: PI = 4.0_defReal * atan(1.0_defReal), &
                                       SQRT2 = sqrt(2._defReal), &
                                       SQRT2_2 = sqrt(2._defReal)/2._defReal , &

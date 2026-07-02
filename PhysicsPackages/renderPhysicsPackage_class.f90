@@ -33,7 +33,7 @@ module renderPhysicsPackage_class
   !! containing a ray plot.
   !!
   !! The rendering allows modifying the ray plot live. Requires the presence
-  !! of eog for viewing/updating images.
+  !! of an app for viewing/updating images (eog works well).
   !!
   type, public,extends(physicsPackage) :: renderPhysicsPackage
     private
@@ -42,6 +42,7 @@ module renderPhysicsPackage_class
     integer(shortInt)        :: geomIdx = 0
     type(visualiser)         :: viz
     type(dictionary)         :: dict
+    character(nameLen)       :: displayApp = 'eog'
 
   contains
     procedure :: init
@@ -65,16 +66,17 @@ contains
     real(defReal), dimension(3,3)                  :: M
     integer(shortInt)                              :: offset, ios, matIdx, pos, n, i
     character(nameLen)                             :: outputFile, outputLive
-    real(defReal)                                  :: a, b, c
+    real(defReal)                                  :: a, b, c, d, e, f
     real(defReal), dimension(3)                    :: dir, dirV, dirH, centre, camera,&
                                                       light, up, right
+    real(defReal), dimension(6)                    :: bounds
     character(100)                                 :: line
     character(nameLen)                             :: cmd, matName, argStr
     character(100), parameter :: Here = 'run (renderPhysicsPackage_class.f90)'
 
     ! Extract ray info from the viz dictionary
     call getRayPlotInfo(self % dict, outputFile, centre, camera, light, up, M, fov, ambient, &
-                        res, mats, offset)
+                        res, mats, offset, bounds)
     
     allocate(matIDs(res(1), res(2)))
     allocate(lum(res(1), res(2)))
@@ -98,11 +100,12 @@ contains
     print *, 'Set ambient light: amb <strength between 0 and 1>'
     print *, 'Make a material opaque: opaq <material name>'
     print *, 'Make a material transparent: transp <material name>'
+    print *, 'Set rendered volume: bounds <-x -y -z +x +y +z>'
     print *, 'Provide list of material names: mats'
     print *, 'Quit: q'
       
     ! lum contains luminosity values, matIDs identifies which materials were hit
-    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient)
+    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient, bounds)
     
     ! Translate to an image.
     ! Obtain material colours and scale by luminosity
@@ -116,7 +119,7 @@ contains
     call imgBmp_toFile(img, outputFile)
     call execute_command_line("mv "//outputFile//" "//outputLive)
 
-    call execute_command_line('eog '//outputLive//' &')
+    call execute_command_line(self % displayApp//" "//outputLive//" &")
 
     print *,'Input command:'
     do
@@ -208,6 +211,9 @@ contains
       case ("light")
         read(argStr, *, iostat=ios) a, b, c
         light = [a, b, c]
+      case ("bounds")
+        read(argStr, *, iostat=ios) a, b, c, d, e, f
+        bounds = [a, b, c, d, e, f]
       case ("amb")
         read(argStr, *, iostat=ios) a
         a = max(a, ZERO)
@@ -269,7 +275,7 @@ contains
       end select
       
       ! lum contains luminosity values, matIDs identifies which materials were hit
-      call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient)
+      call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient, bounds)
     
       ! Translate to an image.
       ! Obtain material colours and scale by luminosity
@@ -303,6 +309,9 @@ contains
     character(nameLen)                      :: vizType
     character(100), parameter :: Here ='init (renderPhysicsPackage_class.f90)'
 
+    ! Read the app used to display the live-updated image
+    call dict % getOrDefault(self % displayApp, "app", "eog")
+    
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
 

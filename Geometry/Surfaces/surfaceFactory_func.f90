@@ -16,6 +16,8 @@ module surfaceFactory_func
   use box_class,            only : box
   use squareCylinder_class, only : squareCylinder
   use truncCylinder_class,  only : truncCylinder
+  use truncHexagon_class,   only : truncHexagon
+  use hexagon_class,        only : hexagon
   use truncCone_class,      only : truncCone
   use wedge_class,          only : wedge
 
@@ -40,9 +42,15 @@ module surfaceFactory_func
                                                                       'xSquareCylinder',&
                                                                       'ySquareCylinder',&
                                                                       'zSquareCylinder',&
+                                                                      'xHexagon       ',&
+                                                                      'yHexagon       ',&
+                                                                      'zHexagon       ',&
                                                                       'xTruncCylinder ',&
                                                                       'yTruncCylinder ',&
                                                                       'zTruncCylinder ',&
+                                                                      'xTruncHexagon  ',&
+                                                                      'yTruncHexagon  ',&
+                                                                      'zTruncHexagon  ',&
                                                                       'xWedge         ',&
                                                                       'yWedge         ',&
                                                                       'zWedge         ']
@@ -98,8 +106,14 @@ contains
       case ('xSquareCylinder', 'ySquareCylinder', 'zSquareCylinder')
         allocate (squareCylinder :: new)
 
+      case ('xHexagon', 'yHexagon', 'zHexagon')
+        allocate (hexagon :: new)
+
       case ('xTruncCylinder', 'yTruncCylinder', 'zTruncCylinder')
         allocate (truncCylinder :: new)
+
+      case ('xTruncHexagon', 'yTruncHexagon', 'zTruncHexagon')
+        allocate (truncHexagon :: new)
 
       case ('xTruncCone', 'yTruncCone', 'zTruncCone')
         allocate (truncCone :: new)

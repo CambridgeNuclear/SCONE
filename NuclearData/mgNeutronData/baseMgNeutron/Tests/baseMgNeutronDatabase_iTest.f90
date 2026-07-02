@@ -86,6 +86,7 @@ contains
     p % pRNG => pRNG
     p % type = P_NEUTRON
     p % G = 1
+    p % isMG = .true.
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
     ! Test getting Total XS
@@ -217,6 +218,7 @@ contains
     p % pRNG => pRNG
     p % type = P_NEUTRON
     p % G = 1
+    p % isMG = .true.
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
     ! Test getting Total XS

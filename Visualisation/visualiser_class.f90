@@ -366,30 +366,31 @@ contains
   !!     #fov 70;#               // Field-of-view in the horizontal axis in degrees
   !!     #offset 978; #          // Parameter to 'randomize' the colour map
   !!     #transparent (mat1, mat2, ... );# // Names of transparent materials
+  !!     #bounds (-2 -5 10 4 -3 12);# // Bounds outside of which everything is transparent
   !!   }
   !!
   !!
   subroutine makeRayPlot(self, dict)
-    class(visualiser), intent(inout) :: self
-    class(dictionary), intent(in)    :: dict
-    real(defReal)                    :: fov, ambient
-    real(defReal), dimension(3) :: centre, camera, light, up
+    class(visualiser), intent(inout)               :: self
+    class(dictionary), intent(in)                  :: dict
+    real(defReal)                                  :: fov, ambient
+    real(defReal), dimension(3)                    :: centre, camera, light, up
     integer(shortInt), dimension(2)                :: res
     integer(shortInt), dimension(:), allocatable   :: mats
     integer(shortInt), dimension(:,:), allocatable :: img, matIDs
     real(defReal), dimension(:,:), allocatable     :: lum
     real(defReal), dimension(3,3)                  :: M
     integer(shortInt)                              :: offset
+    real(defReal), dimension(6)                    :: bounds
     character(nameLen)                             :: outputFile
     
     call getRayPlotInfo(dict, outputFile, centre, camera, light, up, M, fov, ambient, &
-                        res, mats, offset)
+                        res, mats, offset, bounds)
     
     allocate(matIDs(res(1), res(2)))
     allocate(lum(res(1), res(2)))
 
-    ! lum contains luminosity values, matIDs identifies which materials were hit
-    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient)
+    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient, bounds)
 
     ! Translate to an image.
     ! Obtain material colours and scale by luminosity
@@ -501,7 +502,7 @@ contains
   !! the live renderer
   !!
   subroutine getRayPlotInfo(dict, outputFile, centre, camera, light, up, M, fov, ambient, &
-                  res, mats, offset)
+                  res, mats, offset, bounds)
     class(dictionary), intent(in)                             :: dict
     character(nameLen), intent(out)                           :: outputFile
     real(defReal), dimension(3), intent(out)                  :: centre
@@ -514,6 +515,7 @@ contains
     integer(shortInt), dimension(2), intent(out)              :: res
     integer(shortInt), dimension(:), allocatable, intent(out) :: mats
     integer(shortInt), intent(out)                            :: offset
+    real(defReal), dimension(6), intent(out)                  :: bounds
     real(defReal), dimension(:), allocatable                  :: temp
     integer(shortInt), dimension(:), allocatable              :: tempInt
     character(nameLen), dimension(:), allocatable             :: matNames
@@ -623,10 +625,21 @@ contains
 
     end if
 
+    ! Bounds of the transparent region
+    if (dict % isPresent('bounds')) then
+      call dict % get(temp, 'bounds')
+      if (size(temp) /= 6) call fatalError(Here,'Size of "bounds" must be 6 (-x -y -z +x +y +z)')
+      bounds = temp
+    else
+      bounds = [-INF, -INF, -INF, INF, INF, INF]
+    end if
+
   end subroutine getRayPlotInfo
 
   !!
-  !!
+  !! Returns the transformation matrix for a ray plotted view given
+  !! the three defining vectors of camera position, view target/centre, and
+  !! the upwards direction of the view.
   !!
   function getRayPlotTransformation(camera, centre, up) result(M)
     real(defReal), dimension(3), intent(in) :: camera

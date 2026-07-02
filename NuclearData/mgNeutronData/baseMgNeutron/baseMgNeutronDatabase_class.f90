@@ -486,6 +486,7 @@ contains
     ! TODO: Update should there be a temperature model developed for MG XSs
 
     ! Allocate majorant
+    if (allocated(self % majorant)) deallocate(self % majorant)
     allocate (self % majorant(self % nG))
 
     ! Loop over energy groups
