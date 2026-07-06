@@ -2,7 +2,7 @@ module renderPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,              only : fatalError, rotateAroundAxis, crossProduct
+  use genericProcedures,              only : fatalError, rotateAroundAxis, crossProduct, numToChar
   use dictionary_class,               only : dictionary
 
   ! Physics package interface
@@ -64,7 +64,7 @@ contains
     integer(shortInt), dimension(:,:), allocatable :: img, matIDs
     real(defReal), dimension(:,:), allocatable     :: lum
     real(defReal), dimension(3,3)                  :: M
-    integer(shortInt)                              :: offset, ios, matIdx, pos, n, i
+    integer(shortInt)                              :: offset, ios, matIdx, pos, n, i, j
     character(nameLen)                             :: outputFile, outputLive
     real(defReal)                                  :: a, b, c, d, e, f
     real(defReal), dimension(3)                    :: dir, dirV, dirH, centre, camera,&
@@ -95,13 +95,15 @@ contains
     print *, 'Zoom camera: +/- <distance in cm>'
     print *, 'Set "up": up <3D direction>'
     print *, 'Set light: light <3D position>'
-    print *, 'Set camera: cam <3D position>'
+    print *, 'Set camera: camera <3D position>'
     print *, 'Set centre: centre <3D position>'
     print *, 'Set ambient light: amb <strength between 0 and 1>'
     print *, 'Make a material opaque: opaq <material name>'
     print *, 'Make a material transparent: transp <material name>'
     print *, 'Set rendered volume: bounds <-x -y -z +x +y +z>'
+    print *, 'Set resolution in x and y directions: res <xPixels yPixels>'
     print *, 'Provide list of material names: mats'
+    print *, 'Provide the positions of the camera, centre, and light: pos'
     print *, 'Quit: q'
       
     ! lum contains luminosity values, matIDs identifies which materials were hit
@@ -118,7 +120,6 @@ contains
     ! Print image
     call imgBmp_toFile(img, outputFile)
     call execute_command_line("mv "//outputFile//" "//outputLive)
-
     call execute_command_line(self % displayApp//" "//outputLive//" &")
 
     print *,'Input command:'
@@ -196,7 +197,7 @@ contains
         M = getRayPlotTransformation(camera, centre, up)
         dirV = M(:,3)
         dirH = M(:,2)
-      case ("cam")
+      case ("camera")
         read(argStr, *, iostat=ios) a, b, c
         camera = [a, b, c]
         M = getRayPlotTransformation(camera, centre, up)
@@ -267,6 +268,25 @@ contains
         end do
         cycle
 
+      case("res")
+        read(argStr, *, iostat=ios) i, j
+    
+        if (i < 1 .or. j < 1) then
+          print *,'Invalid pixels values provided'
+          cycle
+        end if
+
+        res(1) = i
+        res(2) = j
+        deallocate(matIDs, lum)
+        allocate(matIDs(res(1), res(2)))
+        allocate(lum(res(1), res(2)))
+
+      case ("pos")
+        print *,'Camera position: '//numToChar(camera)
+        print *,'Centre position: '//numToChar(centre)
+        print *,'Light position: '//numToChar(light)
+        cycle
       case ("q")
         exit
       case default
