@@ -339,5 +339,34 @@ contains
     @assertEqual(ref, this % surf % distance(r, -u), TOL * ref)
 
   end subroutine testDistance
+  
+  !!
+  !! Test producing the normal vector
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testNormal(this)
+    class(test_cylinder), intent(inout) :: this
+    real(defReal), dimension(3)         :: n
+    real(defReal), dimension(3)         :: r, u
+    integer(shortInt)                   :: a, p1, p2
+    
+    ! Set axis and plane axis indices
+    a = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
+
+    r(a) = TWO
+    r(p1) = 3.0_defReal
+    r(p2) = 1.0_defReal
+
+    u = [1, 0, 0]
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(n(a), ZERO)
+    @assertEqual(n(p1), ONE / sqrt(TWO))
+    @assertEqual(n(p2), -ONE / sqrt(TWO))
+
+  end subroutine testNormal
 
 end module cylinder_test

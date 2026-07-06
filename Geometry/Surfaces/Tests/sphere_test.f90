@@ -181,5 +181,30 @@ contains
     @assertEqual(ref, surf % distance(r, -u))
 
   end subroutine testDistance
+  
+  !!
+  !! Test producing the normal vector
+  !!
+@Test
+  subroutine testNormal()
+    real(defReal), dimension(3) :: n
+    real(defReal), dimension(3) :: r, u
+
+    r = [3.0_defReal, TWO, ONE]
+    u = [100, 200, 400]
+    n = surf % normal(r, u)
+
+    @assertEqual(ONE, n(1))
+    @assertEqual(ZERO, n(2))
+    @assertEqual(ZERO, n(3))
+    
+    r = [ONE, 3.0_defReal, ZERO]
+    n = surf % normal(r, u)
+    
+    @assertEqual(ZERO, n(1))
+    @assertEqual(ONE/sqrt(TWO), n(2))
+    @assertEqual(-ONE/sqrt(TWO), n(3))
+
+  end subroutine testNormal
 
 end module sphere_test

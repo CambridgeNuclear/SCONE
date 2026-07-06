@@ -2,6 +2,7 @@ module thermalScatteringData_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,           only : MINIMUM_ENERGY
   use genericProcedures,            only : fatalError, numToChar, binarySearch, &
                                            endfInterpolate, isSorted
   use dataDeck_inter,               only : dataDeck
@@ -150,7 +151,7 @@ contains
       case('elastic')
 
         if (self % hasElastic) then
-          E1 = 1.0E-11_defReal
+          E1 = MINIMUM_ENERGY
           N1 = size(self % elastic % eGrid)
           N2 = size(self % inelastic % eGrid)
           ! Needed because if S(a,b) inelastic scattering data is present and

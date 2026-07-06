@@ -207,6 +207,7 @@ contains
 
       ! Decrement total inelastic and exit if sampling is finished
       XS = XS - topXS * f - (ONE-f) * bottomXS
+
       if (XS <= ZERO) then
         MT = self % MTdata(i) % MT
         return
@@ -885,14 +886,15 @@ contains
 
       ! Find bottom and top of the MT cross section energy grid
       bottom = self % MTdata(i) % firstIdx
-      top    = bottom + size(self % MTdata(i) % xs)
+      top    = bottom + size(self % MTdata(i) % xs) - 1
+
       if (MT >= 50 .and. MT <= 91) firstIdxMT4 = min(firstIdxMT4, bottom)
 
       ! Build total inelastic cross sections and MT4 from partials
       do j = 1, Ngrid
         if (j >= bottom .and. j <= top) then
           self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
-          self % MTdata(i) % xs(j-bottom + 1)
+          self % MTdata(i) % xs(j - bottom + 1)
 
           if (MT >= 50 .and. MT <= 91) then
             xsMT4(j) = xsMT4(j) + self % MTdata(i) % xs(j-bottom + 1)

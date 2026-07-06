@@ -7,7 +7,7 @@ module universalVariables
   ! *** DON't CHANGE THIS. HARDCODED IS FINE
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
-  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 8
+  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 12
   integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
 
   ! CHANGE THIS: NUMBER WILL DEPEND ON SYSTEM ARCHITECTURE
@@ -24,6 +24,10 @@ module universalVariables
                                       INF         = 2.0_defReal**63, &
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
+  ! Energy variables
+  real(defReal), parameter, public :: MINIMUM_ENERGY = 1.0E-11_defReal, &
+                                      MAXIMUM_ENERGY = 20.0_defReal
+  
   ! Flags for different possible events in movement in geometry
   integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
