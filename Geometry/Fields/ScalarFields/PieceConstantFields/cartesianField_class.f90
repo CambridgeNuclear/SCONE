@@ -10,6 +10,7 @@ module cartesianField_class
   use dictionary_class,         only : dictionary
   use box_class,                only : box
   use materialMenu_mod,         only : mm_matIdx => matIdx
+  use cartesianLattice_class,   only : cartesianLattice
 
   implicit none
   private
@@ -25,8 +26,10 @@ module cartesianField_class
   !! Piecewise constant field constructed from a lattice-like grid. 
   !! Values of the field are piecewise constant.
   !!
-  !! Similar to a Cartesian lattice. Centre is placed at origin.
-  !! Can include materials: values can be set on a coarse grid and differentiating
+  !! Uses the Cartesian lattice to define the grid and perform most operations.
+  !! Centre is placed at origin.
+  !!
+  !! As well as space, can include materials: values can be set on a coarse grid and differentiate
   !! between materials within a given grid cell. 
   !! If applying the values uniformly to all materials, can use the keyword 'all', 
   !! i.e., materials (all);
@@ -52,11 +55,8 @@ module cartesianField_class
   !!
   type, public, extends(pieceConstantField) :: cartesianField
     private
-    real(defReal), dimension(3)     :: pitch = ZERO
-    integer(shortInt), dimension(3) :: sizeN = 0
-    real(defReal), dimension(3)     :: corner = ZERO
-    real(defReal), dimension(3)     :: a_bar  = ZERO
-    type(box)                       :: outline
+    type(cartesianLattice) :: lattice
+    type(box)              :: outline
     
     integer(shortInt)                            :: nMat = 0
     integer(shortInt), dimension(:), allocatable :: matIdxs
@@ -68,8 +68,6 @@ module cartesianField_class
     procedure :: distance
     procedure :: map
     procedure :: kill
-
-    procedure, private :: getLocalID
   end type cartesianField
 
 contains
@@ -82,66 +80,24 @@ contains
     class(dictionary), intent(in)                 :: dict
     type(dictionary)                              :: tempDict
     integer(shortInt)                             :: N, i, j, k, idx0
-    integer(shortInt), dimension(:), allocatable  :: tempI
     real(defReal), dimension(:), allocatable      :: temp
     real(defReal), dimension(3)                   :: origin
+    integer(shortInt), dimension(3)               :: sizeN
     real(defReal), dimension(:,:), allocatable    :: tempMap
     character(nameLen), dimension(:), allocatable :: mats
     character(100), parameter :: Here = 'init (cartesianField_class.f90)'
     
-    ! Load pitch
-    call dict % get(temp, 'pitch')
-    N = size(temp)
-
-    if (N /= 3) then
-      call fatalError(Here, 'Pitch must have size 3. Has: '//numToChar(N))
-    end if
-    self % pitch = temp
-    
-    ! Load origin
-    call dict % get(temp, 'origin')
-    N = size(temp)
-
-    if (N /= 3) then
-      call fatalError(Here, 'Origin must have size 3. Has: '//numToChar(N))
-    end if
-    origin = temp
-
-    ! Load Size
-    call dict % get(tempI, 'shape')
-    N = size(tempI)
-
-    if (N /= 3) then
-      call fatalError(Here, 'Shape must have size 3. Has: '//numToChar(N))
-    else if (any(tempI < 0)) then
-      call fatalError(Here, 'Shape contains -ve entries')
-    end if
-    self % sizeN = tempI
-
-    ! Detect reduced Z dimension
-    if (self % sizeN(3) == 0) then
-      self % sizeN(3) = 1
-      self % pitch(3) = TWO * INF
-    end if
-
-    ! Check X & Y for 0 size
-    if (any( self % sizeN == 0)) call fatalError(Here, 'Shape in X and Y axis cannot be 0.')
-
-    ! Check for invalid pitch
-    if (any(self % pitch < 10 * SURF_TOL)) then
-     call fatalError(Here, 'Pitch size must be larger than: '//numToChar( 10 * SURF_TOL))
-   end if
-
-    ! Calculate halfwidth and corner
-    self % a_bar = self % pitch * HALF - SURF_TOL
-    self % corner = origin -(self % sizeN * HALF * self % pitch)
+    ! Initialise the lattice
+    call self % lattice % init(dict)
+    sizeN = self % lattice % getSize()
+    origin = self % lattice % getOrigin()
 
     ! Build outline box
     call tempDict % init(4)
     call tempDict % store('type', 'box')
     call tempDict % store('id', 1)
     call tempDict % store('origin', origin)
-    call tempDict % store('halfwidth', abs(self % corner - origin))
+    call tempDict % store('halfwidth', abs(self % lattice % getCorner() - origin))
     call self % outline % init(tempDict)
 
     ! Construct fill array
@@ -163,7 +119,7 @@ contains
     end if
 
     ! Size field value array
-    self % N = product(self % sizeN * self % nMat)
+    self % N = product(sizeN * self % nMat)
     allocate(self % val(self % N + 1))
 
     ! Read field values for each material
@@ -174,7 +130,7 @@ contains
 
       ! Flip array up-down for more natural input
       ! Reshape into rank 2 array
-      tempMap = reshape(temp, [self % sizeN(1), self % sizeN(2) * self % sizeN(3)])
+      tempMap = reshape(temp, [sizeN(1), sizeN(2) * sizeN(3)])
       N = size(tempMap, 2)
       do j = 1, N/2
         call swap(tempMap(:,j), tempMap(:,N - j + 1))
@@ -203,14 +159,13 @@ contains
   !!
   !! See pieceConstantField for details
   !!
-  function at(self, coords) result(val)
+  pure function at(self, coords) result(val)
     class(cartesianField), intent(in) :: self
     class(coordList), intent(in)      :: coords
     real(defReal)                     :: val
     integer(shortInt)                 :: localID
     
-    localID = self % map (coords)
-    if (localID == 0) localID = self % N + 1
+    localID = self % map(coords)
     val = self % val(localID)
 
   end function at
@@ -226,10 +181,11 @@ contains
     integer(shortInt)                 :: idx
     integer(shortInt)                 :: idx0
     
-    idx = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
+    idx = self % lattice % findCell(coords % lvl(1) % r, coords % lvl(1) % dir)
 
     ! Outside the field
-    if (idx == 0) then
+    if (idx == self % lattice % getOutID()) then
+      idx = self % N + 1
       return
 
     end if
@@ -238,9 +194,9 @@ contains
     ! Ensure material is present
     if (any(self % matIdxs == coords % matIdx)) then
       idx0 = findloc(self % matIdxs, coords % matIdx, 1)
-      idx = idx + (idx0 - 1) * product(self % sizeN)
+      idx = idx + (idx0 - 1) * product(self % lattice % getSize())
     else if (self % matIdxs(1) /= ALL_MATS) then
-      idx = 0
+      idx = self % N + 1
     end if
 
   end function map
@@ -268,15 +224,16 @@ contains
     class(cartesianField), intent(in) :: self
     class(coordList), intent(in)      :: coords
     real(defReal)                     :: d
-    real(defReal)                     :: test_d
-    integer(shortInt)                 :: localID, temp, base, ax, i
-    integer(shortInt), dimension(3)   :: ijk
-    real(defReal), dimension(3)       :: bounds, r_bar, u
+    integer(shortInt)                 :: localID
+    integer(shortInt)                 :: surfIdx
 
-    localID = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
+    ! Avoid compiler warnings
+    surfIdx = 0
+
+    localID = self % lattice % findCell(coords % lvl(1) % r, coords % lvl(1) % dir)
     
     ! Catch case if particle is outside the lattice
-    if (localID == 0) then
+    if (localID == self % lattice % getOutID()) then
       d = self % outline % distance(coords % lvl(1) % r, coords % lvl(1) % dir)
       return
 
@@ -287,50 +244,9 @@ contains
       d = INF
       return
     end if
+
+    call self % lattice % distance(d, surfIdx, localID, coords % lvl(1) % r, coords % lvl(1) % dir)
     
-    ! Compute ijk of localID
-    temp = localID - 1
-
-    base = temp / self % sizeN(1)
-    ijk(1) = temp - self % sizeN(1) * base + 1
-
-    temp = base
-    base = temp / self % sizeN(2)
-    ijk(2) = temp - self % sizeN(2) * base + 1
-
-    ijk(3) = base + 1
-
-    ! Find position wrt lattice cell centre
-    ! Need to use localID to properly handle under and overshoots
-    u = coords % lvl(1) % dir
-    r_bar = coords % lvl(1) % r - self % corner
-    r_bar = r_bar - (ijk - HALF) * self % pitch
-
-    ! Select surfaces in the direction of the particle
-    bounds = sign(self % pitch * HALF, u)
-
-    ! Find minimum distance
-    ! Relay on IEEE 754 standard (for floating point numbers)
-    ! 0.0/0.0 = NaN and (NaN < A = false; for every A)
-    ! A/0.0 = Infinity (if A > 0.0)
-    !
-    ! Provide default axis to ensure no out of bounds array access if
-    ! all distances happen to be infinite
-    d = INF
-    ax = 1
-    do i = 1, 3
-      ! Nominator and denominator will have the same sign (by earlier bounds selection)
-      test_d = (bounds(i) - r_bar(i)) / u(i)
-
-      if (test_d < d) then
-        d = test_d
-        ax = i
-      end if
-    end do
-
-    ! Cap distance value
-    if (d <= ZERO) d = INF
-
   end function distance
   
   !!
@@ -342,58 +258,11 @@ contains
     ! Superclass
     call kill_super(self)
 
-    self % pitch = ZERO
-    self % sizeN = 0
-    self % nMat = 0
-    self % corner = ZERO
-    self % a_bar  = ZERO
+    call self % lattice % kill()
     call self % outline % kill()
+    self % nMat = 0
 
   end subroutine kill
-
-  !!
-  !! Find the local integer ID in the field given position and direction
-  !!
-  pure function getLocalID(self, r, u) result(localID)
-    class(cartesianField), intent(in)       :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3), intent(in) :: u
-    integer(shortInt)                       :: localID
-    real(defReal), dimension(3)             :: r_bar
-    integer(shortInt), dimension(3)         :: ijk
-    integer(shortInt)                       :: i, inc
-          
-    ijk = floor((r - self % corner) / self % pitch) + 1
-
-    ! Get position wrt middle of the lattice cell
-    r_bar = r - self % corner - ijk * self % pitch + HALF * self % pitch
-
-    ! Check if position is within surface tolerance
-    ! If it is, push it to next cell
-    do i = 1, 3
-      if (abs(r_bar(i)) > self % a_bar(i) .and. r_bar(i)*u(i) > ZERO) then
-
-        ! Select increment. Ternary expression
-        if (u(i) < ZERO) then
-          inc = -1
-        else
-          inc = 1
-        end if
-
-        ijk(i) = ijk(i) + inc
-      end if
-    end do
-
-    if (any(ijk <= 0 .or. ijk > self % sizeN)) then ! Point is outside lattice
-      localID = 0
-
-    else
-      localID = ijk(1) + self % sizeN(1) * (ijk(2)-1 + self % sizeN(2) * (ijk(3)-1))
-
-    end if
-
-
-  end function getLocalID
     
   !!
   !! Cast field pointer to cartesianField pointer
@@ -405,7 +274,7 @@ contains
   !!   Null is source is not of cartesianField
   !!   Pointer to source if source is cartesianField type
   !!
-  pure function cartesianField_TptrCast(source) result(ptr)
+  function cartesianField_TptrCast(source) result(ptr)
     class(field), pointer, intent(in) :: source
     type(cartesianField), pointer     :: ptr
 
