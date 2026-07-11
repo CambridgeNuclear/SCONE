@@ -2,14 +2,16 @@ module dispersionUniverse_test
 
   use numPrecision
   use genericProcedures
-  use universalVariables,     only : OVERLAP_MAT
-  use dictionary_class,       only : dictionary
-  use dictParser_func,        only : charToDict
-  use charMap_class,          only : charMap
-  use coord_class,            only : coord
-  use surfaceShelf_class,     only : surfaceShelf
-  use cellShelf_class,        only : cellShelf
-  use dispersionUniverse_class
+  use universalVariables,       only : OVERLAP_MAT
+  use dictionary_class,         only : dictionary
+  use dictParser_func,          only : charToDict
+  use charMap_class,            only : charMap
+  use coord_class,              only : coord
+  use surfaceShelf_class,       only : surfaceShelf
+  use cellShelf_class,          only : cellShelf
+  use cartesianLattice_class,   only : X_MIN, X_MAX, Y_MIN, Y_MAX, Z_MIN, Z_MAX
+  use dispersionUniverse_class, only : dispersionUniverse, BACKGROUND_IDX, OUTSIDE_IDX, &
+                                       OVERLAP_IDX, OUTLINE_SURF
   use funit
 
   implicit none
@@ -83,7 +85,7 @@ contains
     call dict % kill()
     call uni1 % setIdx(4)
 
-    ref = [5, 8, 2, OVERLAP_MAT]
+    ref = [5, 8, 2, 2, OVERLAP_MAT]
     @assertEqual(ref, fill)
 
     ! Build universe 2
@@ -92,7 +94,7 @@ contains
     call dict % kill()
     call uni2 % setIdx(6)
 
-    ref = [5, 8, 2, OVERLAP_MAT]
+    ref = [5, 8, 2, 2, OVERLAP_MAT]
     @assertEqual(ref, fill)
 
   end subroutine setUp
@@ -163,7 +165,7 @@ contains
 
     call uni1 % enter(new, r, dir)
 
-    @assertEqual(3, new % localID)
+    @assertEqual(2 + BACKGROUND_IDX, new % localID)
 
     ! Completely outside the outline box
     r   = [1000.0_defReal, 1000.0_defReal, 1000.0_defReal]
@@ -171,7 +173,7 @@ contains
 
     call uni1 % enter(new, r, dir)
 
-    @assertEqual(3, new % localID)
+    @assertEqual(2 + OUTSIDE_IDX, new % localID)
 
     ! *** Universe 2: overlap detection
     ! In the region shared by both spheres
@@ -182,7 +184,7 @@ contains
 
     @assertEqual(6, new % uniIdx)
     ! nSpheres + 2 -> OVERLAP_MAT cell
-    @assertEqual(4, new % localID)
+    @assertEqual(2 + OVERLAP_IDX, new % localID)
 
     ! Only inside sphere 1 (not sphere 2)
     r   = [-1.5_defReal, ZERO, ZERO]
@@ -222,20 +224,41 @@ contains
     ref = ONE
     @assertEqual(ref, d, TOL * ref)
     ! -s + OUTLINE_SURF, s = 1
-    @assertEqual(-2, surfIdx)
+    @assertEqual(-8, surfIdx)
 
-    ! In the background, well inside the outline -> distance governed by the outline box
-    pos % r      = [ZERO, ZERO, ZERO]
+    ! Point (2,0,0) sits in a grid cell containing no spheres at all
+    ! (cell x-range ~[1.666, 7.500], well clear of both spheres).
+    ! The +x wall of that cell sits at exactly x = 7.5 (by symmetry of the
+    ! grid about the outline's centre), so the distance is exactly 5.5.
+    pos % r      = [2.0_defReal, ZERO, ZERO]
     pos % dir    = [ONE, ZERO, ZERO]
     pos % uniIdx = 4
     pos % cellIdx = 0
-    pos % localId = 3
+    pos % localId = 3   ! background
 
     call uni1 % distance(d, surfIdx, pos)
 
-    ref = 25.00175_defReal   ! distance from x=0 to the outline's +x face at x=25.00175
+    ref = 5.5_defReal
     @assertEqual(ref, d, TOL * ref)
-    @assertEqual(OUTLINE_SURF, surfIdx)
+    @assertEqual(X_MAX, surfIdx)
+
+    ! Sphere 2 (radius 5, centre (20,-2,-2)) spans grid cells 5 and 6 in x.
+    ! Start inside sphere 2, within cell 5 (x in [13.334, 19.168]):
+    !   r = (16,-1,-1); distance from centre = sqrt(16+1+1) = sqrt(18) < 5, so inside.
+    ! Moving +x, the sphere's true exit is at d = 4 + sqrt(23) =~ 8.796,
+    ! but cell 5's +x wall sits at x =~ 19.16783, giving d =~ 3.16783 --
+    ! strictly closer than the sphere exit, so the grid wall must win.
+    pos % r      = [16.0_defReal, -1.0_defReal, -1.0_defReal]
+    pos % dir    = [ONE, ZERO, ZERO]
+    pos % uniIdx = 4
+    pos % cellIdx = 0
+    pos % localId = 2   ! inside sphere 2
+
+    call uni1 % distance(d, surfIdx, pos)
+
+    ref = 3.167833333333333_defReal
+    @assertEqual(ref, d, TOL * ref)
+    @assertEqual(X_MAX, surfIdx)
 
   end subroutine test_distance
 
@@ -272,7 +295,7 @@ contains
   end subroutine test_cross
 
   !!
-  !! Test cell offset (dispersionUniverse always returns zero offset)
+  !! Test cell offset - should translate to the sphere
   !!
 @Test
   subroutine test_cellOffset()
@@ -286,7 +309,7 @@ contains
     pos % cellIdx = 0
     pos % localId = 1
 
-    ref = ZERO
+    ref = pos % r
     @assertEqual(ref, uni1 % cellOffset(pos), TOL)
 
   end subroutine test_cellOffset

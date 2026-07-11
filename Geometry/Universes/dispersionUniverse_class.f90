@@ -10,14 +10,22 @@ module dispersionUniverse_class
   use cellShelf_class,        only : cellShelf
   use sphere_class,           only : sphere
   use box_class,              only : box
-  use cartesianLattice_class, only : cartesianLattice
+  use cartesianLattice_class, only : cartesianLattice, X_MIN, X_MAX, Y_MIN, Y_MAX, &
+                                          Z_MIN, Z_MAX
   use universe_inter,         only : universe, kill_super => kill, charToFill
   
   implicit none
   private
 
   ! Parameter defining the surface of the sphere bounding box
-  integer(shortInt), parameter, public :: OUTLINE_SURF = -1
+  integer(shortInt), parameter, public :: OUTLINE_SURF = Z_MAX -1
+
+  ! Parameters defining the indices of various other fills.
+  ! Background and outside are identical materials, but the IDs help cell searching
+  ! and distance calculations: in the background, local spheres are checked. In the
+  ! outside, no check is made for sphere intersections.
+  integer(shortInt), parameter, public :: BACKGROUND_IDX = 1, OUTSIDE_IDX = 2,&
+                                          OVERLAP_IDX = 3
 
   ! Parameter which oversizes the lattice by a small amount
   real(defReal), parameter, private :: OVER_SIZE = 1.0001_defReal
@@ -37,13 +45,16 @@ module dispersionUniverse_class
   !!
   !! Each local cell in the universe corresponds to either the background material or a
   !! spherical inclusion.
-  !! One extra local cell is always defined inside the dispersionUniverse with OVERLAP_MAT
-  !! (overlapping cells) filling.
+  !! Two extra local cells are always defined inside the dispersionUniverse. One has OVERLAP_MAT
+  !! (overlapping cells) filling. The other has the background fill, but is OUTSIDE the dispersion 
+  !! region.
   !! If a position is in more than one user-defined cell, it is in the overlapping cell. 
-  !! These both exist to enable plotting of geometry without fatalErrors.
+  !! This exists to enable plotting of geometry without fatalErrors.
   !! However, overlapping cells can only be detected if a less optimal cell search is enabled
   !! using the checkOverlap flag. This is encouraged for plotting and debugging, but discouraged
   !! during transport.
+  !! The OUTSIDE region exists to avoid searching for sphere intersections in case the particle is
+  !! in this region. This is distinct from the BACKGROUND region where spheres may be nearby.
   !!
   !! Sample Input Dictionary:
   !!   uni { type dispersionUniverse;
@@ -200,8 +211,9 @@ contains
     call self % outline % init(tempDict)
     call tempDict % kill()
 
+    if (allocated(self % spheres)) deallocate(self % spheres)
     allocate(self % spheres(self % nSpheres))
-    allocate(fill(self % nSpheres + 2))  ! +2 for background, OVERLAP cells
+    allocate(fill(self % nSpheres + OVERLAP_IDX))  ! +3 for background, outside, OVERLAP cells
 
     ! Do the second file pass
     open(unit=10, file=fileName, status='old', action='read', iostat=i)
@@ -212,8 +224,9 @@ contains
       self % avgRadius = self % avgRadius + radius
     end do
     close(10)
-    fill(self % nSpheres + 1) = backgroundFill
-    fill(self % nSpheres + 2) = OVERLAP_MAT
+    fill(self % nSpheres + BACKGROUND_IDX) = backgroundFill
+    fill(self % nSpheres + OUTSIDE_IDX) = backgroundFill
+    fill(self % nSpheres + OVERLAP_IDX) = OVERLAP_MAT
     self % avgRadius = self % avgRadius / real(self % nSpheres, defReal)
 
   end subroutine readFile
@@ -294,6 +307,8 @@ contains
     ! In order of grid cells, the spheres which intersect that cell are recorded in an array.
     ! Subsequently, the offset of the first sphere for each grid cell is recorded in a second array.
     if (any(counts > 0)) then
+      if (allocated(self % sphereInGridList)) deallocate(self % sphereInGridList)
+      if (allocated(self % offsetToGridCell)) deallocate(self % offsetToGridCell)
       allocate(self % sphereInGridList(sum(counts)))
       allocate(self % offsetToGridCell(self % gridSize + 1))
 
@@ -377,7 +392,7 @@ contains
 
     ! If the point is outside the acceleration structure, it is in the background cell
     if (idx > self % gridSize) then
-      localID = size(self % spheres) + 1
+      localID = size(self % spheres) + OUTSIDE_IDX
       return
     end if
 
@@ -400,13 +415,13 @@ contains
 
       ! Return OVERLAP_MAT if more than one sphere is valid
       else if (found > 1) then
-        localID = size(self % spheres) + 2
+        localID = size(self % spheres) + OVERLAP_IDX
         return
       end if
     end if
       
     ! If not in any of the spheres, must be in the background
-    localID = self % nSpheres + 1
+    localID = self % nSpheres + BACKGROUND_IDX
 
   end subroutine findCell
 
@@ -434,13 +449,13 @@ contains
     u = coords % dir
 
     ! Catch case if particle is outside the lattice
-    if (coords % localID == self % nSpheres + 1) then
+    if (coords % localID == self % nSpheres + OUTSIDE_IDX) then
       surfIdx = OUTLINE_SURF
       d = self % outline % distance(r, u)
       return
 
     ! Also catch if particle is in overlapping material
-    else if (coords % localID == self % nSpheres + 2) then
+    else if (coords % localID == self % nSpheres + OVERLAP_IDX) then
       call fatalError(Here, 'Particle is in an overlapping local cell. Position: '&
           //numToChar(coords % r))
 
@@ -459,7 +474,7 @@ contains
       dTest = self % spheres(s) % distance(r, u)
       
       ! The surfIdx -s + OUTLINE_SURF is because 1) negative surfIdxs show that surfaces are not
-      ! on the surfShell but instead part of a universe and 2) surfIdx -1 is the outline
+      ! on the surfShell but instead part of a universe and 2) surfIdx -7 is the outline
       ! so -s+OUTLINE_SURF is the index of sphere s
       if (dTest < d) then
         d = dTest
@@ -491,11 +506,14 @@ contains
   !!
   function cellOffset(self, coords) result (offset)
     class(dispersionUniverse), intent(in) :: self
-    type(coord), intent(in)         :: coords
-    real(defReal), dimension(3)     :: offset
+    type(coord), intent(in)               :: coords
+    real(defReal), dimension(3)           :: offset
 
-    ! There is no cell offset
-    offset = ZERO
+    if (coords % localID <= self % nSpheres) then
+      offset = self % spheres(coords % localID) % getOrigin()
+    else
+      offset = ZERO
+    end if
 
   end function cellOffset
     
@@ -512,9 +530,15 @@ contains
     integer(shortInt)                     :: idx
     character(100), parameter :: Here = 'getNormal (dispersionUniverse_class.f90)'
     
-    if (surfIdx == OUTLINE_SURF) then
+    ! Internal boundary within the acceleration structure
+    if (surfIdx > OUTLINE_SURF .and. surfIdx <= X_MIN) then
+      normal = self % accelStruct % getNormal(surfIdx)
+
+    ! Hits the outline surface
+    else if (surfIdx == OUTLINE_SURF) then
       normal = self % outline % normal(coords % r, coords % dir)
 
+    ! Hits one of the spheres
     else if (surfIdx < OUTLINE_SURF .and. surfIdx >= (OUTLINE_SURF - self % nSpheres)) then
       idx = abs(surfIdx - OUTLINE_SURF)
       normal = self % spheres(idx) % normal(coords % r, coords % dir)

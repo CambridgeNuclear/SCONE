@@ -1041,7 +1041,7 @@ Example: ::
 
 Example: ::
 
-     triso { id 3; type pebbleUniverse; radii (2.5E-4 3.5E-4 3.9E-4 0.0); 
+     triso { id 3; type pebbleUniverse; radii (0.025 0.035 0.039 0.0); 
              fills (u<1> buffer pyC SiC graphite); }
 
 * rootUniverse: top level universe of geometry
