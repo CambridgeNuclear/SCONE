@@ -52,6 +52,8 @@ module sphere_class
 
     ! Local procedures
     procedure :: build
+    procedure :: getRadius
+    procedure :: getOrigin
   end type sphere
 
 contains
@@ -68,6 +70,28 @@ contains
     str = TYPE_NAME
 
   end function myType
+
+  !!
+  !! Return the radius of the sphere
+  !!
+  pure function getRadius(self) result(r)
+    class(sphere), intent(in) :: self
+    real(defReal)             :: r
+
+    r = self % r
+
+  end function getRadius
+
+  !!
+  !! Return the origin of the sphere
+  !!
+  pure function getOrigin(self) result(origin)
+    class(sphere), intent(in) :: self
+    real(defReal), dimension(3) :: origin
+
+    origin = self % origin
+
+  end function getOrigin
 
   !!
   !! Initialise sphere from a dictionary

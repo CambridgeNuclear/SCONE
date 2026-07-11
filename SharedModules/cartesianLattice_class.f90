@@ -57,7 +57,9 @@ module cartesianLattice_class
     procedure :: init
     procedure :: kill
     procedure :: findIJK
-    procedure :: findCell
+    generic   :: findCell => findCell_position, findCell_ijk
+    procedure :: findCell_position
+    procedure :: findCell_ijk
     procedure :: distance
     procedure :: getOffset
     procedure :: getNormal
@@ -65,6 +67,7 @@ module cartesianLattice_class
     procedure :: getCorner
     procedure :: getOrigin
     procedure :: getOutID
+    procedure :: getBox
   end type cartesianLattice
 
 contains
@@ -184,6 +187,26 @@ contains
   end function getOutID
 
   !!
+  !! Return the bounding box of a given localID
+  !!
+  pure function getBox(self, localID) result(box)
+    class(cartesianLattice), intent(in)  :: self
+    integer(shortInt), intent(in)        :: localID
+    real(defReal), dimension(6)          :: box
+    integer(shortInt), dimension(3)      :: ijk
+
+    ! Catch case if not inside the lattice
+    if (localID == self % outLocalID) then
+      box = ZERO
+    else
+      ijk = get_ijk(localID, self % sizeN)
+      box(1:3) = self % corner + (ijk - 1) * self % pitch
+      box(4:6) = self % corner + ijk * self % pitch
+    end if
+
+  end function getBox
+
+  !!
   !! Find the ijk indices of a given a position
   !!
   pure function findIJK(self, r) result(ijk)
@@ -194,12 +217,15 @@ contains
     ! Find lattice location in x, y & z
     ijk = floor((r - self % corner) / self % pitch) + 1
 
+    ! If ijk exceeds the lattice bounds, clamp it to zero, i.e., outside the lattice
+    !ijk = merge(ijk, 0, ijk >= 1 .and. ijk <= self % sizeN)
+
   end function findIJK
 
   !!
   !! Find local cell ID given a point
   !!
-  pure function findCell(self, r, u) result(localID)
+  pure function findCell_position(self, r, u) result(localID)
     class(cartesianLattice), intent(in)     :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
@@ -231,15 +257,26 @@ contains
     end do
 
     ! Set localID
-    if (any(ijk <= 0 .or. ijk > self % sizeN)) then ! Point is outside lattice
-      localID = self % outLocalID
+    localID = self % findCell(ijk)
 
+  end function findCell_position
+
+  !!
+  !! Find local cell ID given ijk index
+  !!
+  pure function findCell_ijk(self, ijk) result(localID)
+    class(cartesianLattice), intent(in)         :: self
+    integer(shortInt), dimension(3), intent(in) :: ijk
+    integer(shortInt)                           :: localID
+
+    ! Set localID
+    if (any(ijk < 1) .or. any(ijk > self % sizeN)) then ! Point is outside lattice
+      localID = self % outLocalID
     else
       localID = ijk(1) + self % sizeN(1) * (ijk(2)-1 + self % sizeN(2) * (ijk(3)-1))
-
     end if
 
-  end function findCell
+  end function findCell_ijk
 
   !!
   !! Return distance to the next boundary between local cells in the universe
