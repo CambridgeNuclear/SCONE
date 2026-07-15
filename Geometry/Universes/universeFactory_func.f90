@@ -21,11 +21,13 @@ module universeFactory_func
 
   ! List contains acceptable types of universe
   ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
-  character(nameLen), dimension(*), parameter :: AVAILABLE_UNI = ['rootUniverse   ',&
-                                                                  'cellUniverse   ',&
-                                                                  'pinUniverse    ',&
-                                                                  'hexLatUniverse ',&
-                                                                  'latUniverse    ']
+  character(nameLen), dimension(*), parameter :: AVAILABLE_UNI = ['rootUniverse',&
+                                                                  'cellUniverse',&
+                                                                  'pinUniverse ',&
+                                                                  'xHexLattice ',&
+                                                                  'yHexLattice ',&
+                                                                  'zHexLattice ',&
+                                                                  'latUniverse ']
 
   ! Public Interface
   public :: new_universe_ptr
@@ -74,7 +76,7 @@ contains
       case ('latUniverse')
         allocate(latUniverse :: ptr)
 
-      case ('hexLatUniverse')
+      case ('xHexLattice', 'yHexLattice', 'zHexLattice')
         allocate(hexLatUniverse :: ptr)
 
       case default

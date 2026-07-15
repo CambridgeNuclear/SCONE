@@ -146,6 +146,7 @@ module hexLatUniverse_class
     ! Private helpers
     procedure, private :: cellCentre
     procedure, private :: nearestIJ
+    procedure, private :: resolveCell
   end type hexLatUniverse
 
 contains
@@ -319,7 +320,7 @@ contains
                                   + hw * TWO_SQRT3
     halfwidth3(self % plane(2)) = (max(c1(2),c2(2),c3(2),c4(2)) - min(c1(2),c2(2),c3(2),c4(2))) * HALF &
                                   + hw * TWO_SQRT3
-    halfwidth3(self % axis)     = self % sizeN(3) * self % axialPitch * HALF
+    halfwidth3(self % axis) = self % sizeN(3) * self % axialPitch * HALF
 
     call tempDict % init(4)
     call tempDict % store('type', 'box')
@@ -480,10 +481,49 @@ contains
     integer(shortInt), intent(out)          :: cellIdx
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
+    integer(shortInt)                       :: i, j, k
+
+    call self % resolveCell(r, u, i, j, k)
+
+    ! Set localID & cellIdx
+    if (i < 1 .or. i > self % sizeN(1) .or. &
+        j < 1 .or. j > self % sizeN(2) .or. &
+        k < 1 .or. k > self % sizeN(3)) then ! Point is outside the lattice
+      localID = self % outLocalID
+
+    else
+      localID = i + self % sizeN(1) * (j - 1 + self % sizeN(2) * (k - 1))
+
+    end if
+    cellIdx = 0
+
+  end subroutine findCell
+
+  !!
+  !! Resolve the (i,j,k) indices of the hexagonal cell (in the infinite tiling) that a
+  !! point r, travelling with direction u, is considered to occupy.
+  !!
+  !! This is the full cell-resolution logic shared by findCell (to classify a cell as
+  !! interior/background) and by distance (when a background point still lies within the
+  !! padded outline, and the nearest tiling cell -- possibly out of the valid map range --
+  !! must be identified in a way that is consistent with the direction of travel).
+  !!
+  !! Args:
+  !!   r [in] -> Position, in the universe's local frame
+  !!   u [in] -> Direction, in the universe's local frame
+  !!   i [out] -> 1st in-plane oblique co-ordinate of the resolved cell
+  !!   j [out] -> 2nd in-plane oblique co-ordinate of the resolved cell
+  !!   k [out] -> axial layer index of the resolved cell
+  !!
+  pure subroutine resolveCell(self, r, u, i, j, k)
+    class(hexLatUniverse), intent(in)       :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    integer(shortInt), intent(out)          :: i, j, k
     real(defReal), dimension(2)             :: rl, ul, centre, rl_local, n
     real(defReal)                           :: dist, proj, maxProj
     real(defReal)                           :: r_bar_ax
-    integer(shortInt)                       :: i, j, k, f, bestFace, bestSign
+    integer(shortInt)                       :: f, bestFace, bestSign
 
     rl = r(self % plane)
     ul = u(self % plane)
@@ -538,19 +578,7 @@ contains
       end if
     end if
 
-    ! Set localID & cellIdx
-    if (i < 1 .or. i > self % sizeN(1) .or. &
-        j < 1 .or. j > self % sizeN(2) .or. &
-        k < 1 .or. k > self % sizeN(3)) then ! Point is outside the lattice
-      localID = self % outLocalID
-
-    else
-      localID = i + self % sizeN(1) * (j - 1 + self % sizeN(2) * (k - 1))
-
-    end if
-    cellIdx = 0
-
-  end subroutine findCell
+  end subroutine resolveCell
 
   !!
   !! Return distance to the next boundary between local cells in the universe
@@ -563,11 +591,12 @@ contains
     integer(shortInt), intent(out)       :: surfIdx
     type(coord), intent(in)              :: coords
     real(defReal), dimension(2)          :: rl_local, ul, n
-    real(defReal)                        :: uProj, rProj, a_far, test_d, r_bar_ax, centre_ax
+    real(defReal)                        :: uProj, rProj, a_far, test_d, r_bar_ax, centre_ax, d0
     integer(shortInt), dimension(3)      :: ijk
-    integer(shortInt)                    :: f, i, j, k
+    integer(shortInt)                    :: f, i, j, k, surfIdx0
 
     ! Catch case if particle is outside the lattice
+    d0 = INF
     if (coords % localID == self % outLocalID) then
 
       if (self % outline % evaluate(coords % r) > ZERO) then
@@ -581,10 +610,16 @@ contains
       ! Otherwise: still background, but already inside the bounding box -- i.e. in the gap
       ! between the (padded) box and the true edge of the hexagonal tiling. Fall through to
       ! the standard per-cell face/axial test below, using the (i,j,k) of the tiling cell
-      ! closest to the current position (even though it lies outside the valid map range),
-      ! so the returned distance can never overshoot a genuine entry into the lattice.
-      call self % nearestIJ(coords % r(self % plane), i, j)
-      k = floor((coords % r(self % axis) - self % axialCorner) / self % axialPitch) + 1
+      ! closest to the current position (even though it lies outside the valid map range).
+      ! Use the same resolution logic as findCell (including the boundary tolerance pushes)
+      ! so that a point sitting exactly on a face/axial boundary is assigned to the cell
+      ! consistent with the direction of travel -- otherwise the exit distance computed
+      ! below can come out as (or clamp to) zero, causing the particle to become stuck.
+      call self % resolveCell(coords % r, coords % dir, i, j, k)
+
+      ! Check distance to outline anyway
+      surfIdx0 = OUTLINE_SURF
+      d0 = self % outline % distance(coords % r, coords % dir)
 
     else
       ijk = get_ijk(coords % localID, self % sizeN)
@@ -641,6 +676,12 @@ contains
       else
         surfIdx = AX_MIN
       end if
+    end if
+
+    ! Might have hit the outline
+    if (d0 < d) then
+      d = d0
+      surfIdx = surfIdx0
     end if
 
     ! Cap distance value
