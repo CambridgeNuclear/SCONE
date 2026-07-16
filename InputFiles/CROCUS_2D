@@ -30,7 +30,9 @@ activeTally {
                   yax {type spaceMap;  axis y;  grid lin; N 240; min -60.0; max 60.0; }
                   emap {type energyMap; grid unstruct; bins (1.0E-11 0.625E-6 20); }
                 }
-              } 
+              }
+  sixFac {type sixFactorClerk;}
+  display (sixFac); 
 }
 
 geometry {
