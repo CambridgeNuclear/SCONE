@@ -1,4 +1,4 @@
-module hexLatUniverse_test
+module hexUniverse_test
 
   use numPrecision
   use genericProcedures
@@ -8,7 +8,7 @@ module hexLatUniverse_test
   use coord_class,        only : coord
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
-  use hexLatUniverse_class
+  use hexUniverse_class
   use funit
 
   implicit none
@@ -17,7 +17,7 @@ module hexLatUniverse_test
   ! uni1: 3D lattice, "point" orientation, hexagonal plane in x-y, stacked along z
   !   halfwidth = 1.0 (pitch 2.0), axial pitch = 5.0, shape 3 x 3 x 2
   character(*), parameter :: UNI1_DEF = &
-  "id 1; type zHexLattice; orientation 1; pitch (2.0 5.0); shape (3 3 2); padMat void; &
+  "id 1; type zHexUniverse; orientation 1; pitch (2.0 5.0); shape (3 3 2); padMat void; &
   & map ( 1 2 3   &
   &       4 5 6   &
   &       7 8 9   &
@@ -29,7 +29,7 @@ module hexLatUniverse_test
   ! uni2: 2D lattice (infinite along the axis), "flat" orientation, hexagonal plane in x-z,
   !   stacked (infinitely) along y. Background filled with a universe.
   character(*), parameter :: UNI2_DEF = &
-  "id 2; type yHexLattice; orientation 2; pitch (2.0 0.0); shape (2 2 0); padMat u<7>; &
+  "id 2; type yHexUniverse; orientation 2; pitch (2.0 0.0); shape (2 2 0); padMat u<7>; &
   & map ( 1 2   &
   &       2 1); "
 
@@ -37,8 +37,8 @@ module hexLatUniverse_test
   type(surfaceShelf)   :: surfs
   type(cellShelf)      :: cells
   type(charMap)        :: mats
-  type(hexLatUniverse) :: uni1
-  type(hexLatUniverse) :: uni2
+  type(hexUniverse) :: uni1
+  type(hexUniverse) :: uni2
 
 contains
 
@@ -328,4 +328,4 @@ contains
 
   end subroutine test_normal
 
-end module hexLatUniverse_test
+end module hexUniverse_test

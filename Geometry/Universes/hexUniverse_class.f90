@@ -1,4 +1,4 @@
-module hexLatUniverse_class
+module hexUniverse_class
 
   use numPrecision
   use universalVariables, only : INF, SURF_TOL, X_AXIS, Y_AXIS, Z_AXIS
@@ -64,7 +64,7 @@ module hexLatUniverse_class
   !!
   !! Sample Input Dictionary (3D):
   !!   hlatt { id 7;
-  !!           type zHexLattice;
+  !!           type zHexUniverse;
   !!           #origin (0.0 0.0 0.0); #
   !!           #rotation (0.0 0.0 0.0); #
   !!           orientation 1;
@@ -82,7 +82,7 @@ module hexLatUniverse_class
   !!
   !! Sample Input Dictionary (2D):
   !!   hlatt2D { id 8;
-  !!             type zHexLattice;
+  !!             type zHexUniverse;
   !!             orientation 2;
   !!             shape (2 2 0);       // 0 indicates infinite extent along the axis
   !!             pitch (1.0 0.0);     // Axial pitch is ignored, use 0.0 for clarity
@@ -115,7 +115,7 @@ module hexLatUniverse_class
   !! Interface:
   !!   universe interface
   !!
-  type, public, extends(universe) :: hexLatUniverse
+  type, public, extends(universe) :: hexUniverse
     private
     integer(shortInt)                 :: axis      = 0
     integer(shortInt), dimension(2)   :: plane     = 0
@@ -147,7 +147,7 @@ module hexLatUniverse_class
     procedure, private :: cellCentre
     procedure, private :: nearestIJ
     procedure, private :: resolveCell
-  end type hexLatUniverse
+  end type hexUniverse
 
 contains
 
@@ -160,7 +160,7 @@ contains
   !!   fatalError if input is invalid.
   !!
   subroutine init(self, fill, dict, cells, surfs, mats)
-    class(hexLatUniverse), intent(inout)                      :: self
+    class(hexUniverse), intent(inout)                         :: self
     integer(shortInt), dimension(:), allocatable, intent(out) :: fill
     class(dictionary), intent(in)                             :: dict
     type(cellShelf), intent(inout)                            :: cells
@@ -169,7 +169,7 @@ contains
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempI
     integer(shortInt)                              :: N, i, j, outFill, val, orient, f, d, bestIdx
-    type(dictionary)                                :: tempDict
+    type(dictionary)                               :: tempDict
     integer(shortInt), dimension(:,:), allocatable :: tempMap
     character(nameLen)                             :: name, type
     real(defReal), dimension(6)                    :: angles
@@ -180,7 +180,7 @@ contains
     real(defReal)                                  :: invDet, dotv, bestDot, hw
     real(defReal), dimension(2)                    :: c1, c2, c3, c4
     real(defReal), dimension(3)                    :: halfwidth3
-    character(100), parameter :: Here = 'init (hexLatUniverse_class.f90)'
+    character(100), parameter :: Here = 'init (hexUniverse_class.f90)'
 
     ! Setup the base class
     ! With: id, origin, rotation...
@@ -192,20 +192,20 @@ contains
     ! Select type -> axis & plane
     call dict % get(type, 'type')
     select case(type)
-      case('xHexLattice')
+      case('xHexUniverse')
         self % axis  = X_AXIS
         self % plane = [Y_AXIS, Z_AXIS]
 
-      case('yHexLattice')
+      case('yHexUniverse')
         self % axis  = Y_AXIS
         self % plane = [X_AXIS, Z_AXIS]
 
-      case('zHexLattice')
+      case('zHexUniverse')
         self % axis  = Z_AXIS
         self % plane = [X_AXIS, Y_AXIS]
 
       case default
-        call fatalError(Here, 'Unknown type of hexLatUniverse: '//type)
+        call fatalError(Here, 'Unknown type of hexUniverse: '//type)
 
     end select
 
@@ -338,7 +338,7 @@ contains
             'Lattice map size not equal to size implied by shape. Respectively: '//&
             numToChar(size(tempI))//' '//numToChar(product(self % sizeN)))
 
-    ! Flip array up-down for more natural input (as in latUniverse)
+    ! Flip array up-down for more natural input
     ! Reshape into rank 2 array
     tempMap = reshape(tempI, [self % sizeN(1), self % sizeN(2) * self % sizeN(3)])
     N = size(tempMap, 2)
@@ -417,7 +417,7 @@ contains
   !!   underlying hexagonal tiling is infinite.
   !!
   pure function cellCentre(self, i, j) result(c)
-    class(hexLatUniverse), intent(in) :: self
+    class(hexUniverse), intent(in) :: self
     integer(shortInt), intent(in)     :: i, j
     real(defReal), dimension(2)       :: c
 
@@ -436,7 +436,7 @@ contains
   !!   j [out] -> 2nd in-plane oblique co-ordinate of the closest cell
   !!
   pure subroutine nearestIJ(self, rl, i, j)
-    class(hexLatUniverse), intent(in)        :: self
+    class(hexUniverse), intent(in)        :: self
     real(defReal), dimension(2), intent(in)  :: rl
     integer(shortInt), intent(out)           :: i, j
     real(defReal), dimension(2)              :: latCoord, centre
@@ -476,7 +476,7 @@ contains
   !! See universe_inter for details.
   !!
   subroutine findCell(self, localID, cellIdx, r, u)
-    class(hexLatUniverse), intent(inout)    :: self
+    class(hexUniverse), intent(inout)    :: self
     integer(shortInt), intent(out)          :: localID
     integer(shortInt), intent(out)          :: cellIdx
     real(defReal), dimension(3), intent(in) :: r
@@ -516,7 +516,7 @@ contains
   !!   k [out] -> axial layer index of the resolved cell
   !!
   pure subroutine resolveCell(self, r, u, i, j, k)
-    class(hexLatUniverse), intent(in)       :: self
+    class(hexUniverse), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     integer(shortInt), intent(out)          :: i, j, k
@@ -586,7 +586,7 @@ contains
   !! See universe_inter for details.
   !!
   subroutine distance(self, d, surfIdx, coords)
-    class(hexLatUniverse), intent(inout) :: self
+    class(hexUniverse), intent(inout) :: self
     real(defReal), intent(out)           :: d
     integer(shortInt), intent(out)       :: surfIdx
     type(coord), intent(in)              :: coords
@@ -696,7 +696,7 @@ contains
   !! See universe_inter for details.
   !!
   subroutine cross(self, coords, surfIdx)
-    class(hexLatUniverse), intent(inout) :: self
+    class(hexUniverse), intent(inout) :: self
     type(coord), intent(inout)           :: coords
     integer(shortInt), intent(in)        :: surfIdx
 
@@ -710,7 +710,7 @@ contains
   !! See universe_inter for details.
   !!
   function cellOffset(self, coords) result (offset)
-    class(hexLatUniverse), intent(in) :: self
+    class(hexUniverse), intent(in) :: self
     type(coord), intent(in)           :: coords
     real(defReal), dimension(3)       :: offset
     logical(defBool)                  :: doOffset
@@ -744,12 +744,12 @@ contains
   !! See universe_inter for details.
   !!
   function getNormal(self, surfIdx, coords) result (normal)
-    class(hexLatUniverse), intent(in) :: self
+    class(hexUniverse), intent(in) :: self
     integer(shortInt), intent(in)     :: surfIdx
     type(coord), intent(in)           :: coords
     real(defReal), dimension(3)       :: normal
     integer(shortInt)                 :: f
-    character(100), parameter :: Here = 'getNormal (hexLatUniverse_class.f90)'
+    character(100), parameter :: Here = 'getNormal (hexUniverse_class.f90)'
 
     normal = ZERO
 
@@ -779,7 +779,7 @@ contains
   !! Return to uninitialised state
   !!
   subroutine kill(self)
-    class(hexLatUniverse), intent(inout) :: self
+    class(hexUniverse), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
@@ -834,4 +834,4 @@ contains
 
   end function get_ijk
 
-end module hexLatUniverse_class
+end module hexUniverse_class
