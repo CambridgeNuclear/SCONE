@@ -27,13 +27,15 @@ module universe_inter
   !!   translation (to a new origin)
   !!   rotation (by Euler angles using ZXZ convention)
   !!
-  !! Rotation is applied before translation to the origin.
+  !! Rotation is applied before translation to the origin by default.
+  !! This can be changed by setting rotateFirst to false.
   !!
   !! Sample Dictionary Input:
   !!   uni {
   !!     id 7;
   !!     #origin (1.0 0.0 0.1);#
   !!     #rotation (30.0 0.0 0.0);#
+  !!     #rotateFirst 0; #
   !!     <subclass specific data>
   !!   }
   !!
@@ -44,6 +46,7 @@ module universe_inter
   !!   rotMat      -> Rotation matrix for rotation with respect to the higher universe
   !!   rot         -> rotation flag. True if universe is rotated
   !!   globalTrans -> global transformation flag. True if universe coordinates should be evaluated in global frame
+  !!   rotateFirst -> Allows specifying whether to rotate or translate a universe first. Defaults to true.
   !!
   !! Interface:
   !!   id           -> Get Id of the universe
@@ -67,6 +70,7 @@ module universe_inter
     real(defReal), dimension(3,3) :: rotMat = ZERO
     logical(defBool)              :: rot    = .false.
     logical(defBool)              :: globalTrans = .false.
+    logical(defBool)              :: rotateFirst = .false.
   contains
     ! Build procedures
     procedure, non_overridable :: id
@@ -339,6 +343,10 @@ contains
       call self % setTransform(rotation=temp)
     end if
 
+    ! Allow changing the order in which translation v rotation are applied
+    ! By default, rotations are applied first, then translations
+    call dict % getOrDefault(self % rotateFirst, 'rotateFirst', .true.)
+
     ! Load global translation
     if (dict % isPresent('global')) then
       call dict % get(self % globalTrans, 'global')
@@ -409,6 +417,9 @@ contains
     new % uniIdx    = self % uniIdx
     new % isRotated = self % rot
 
+    ! Translate
+    if (.not. self % rotateFirst) new % r = new % r - self % origin
+
     if (new % isRotated) then
       new % rotMat = self % rotMat
       new % r = matmul(self % rotMat, new % r)
@@ -416,7 +427,7 @@ contains
     end if
 
     ! Translate
-    new % r = new % r - self % origin
+    if (self % rotateFirst) new % r = new % r - self % origin
 
     ! Find cell
     call self % findCell(new % localID, new % cellIdx, new % r, new % dir)

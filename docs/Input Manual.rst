@@ -937,6 +937,8 @@ Several ``universeTypes`` are possible:
     of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - rotateFirst (*optional*, default = true): logical which determines whether to apply rotations
+    or origin translations first.
   - checkOverlap (*optional*, default = 0): enables checking for overlaps between cells, useful
     for debugging and plotting. However, this slows down particle transport by making exhaustive
     cell searches mandatory.
@@ -964,6 +966,8 @@ Example: ::
     origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - rotateFirst (*optional*, default = true): logical which determines whether to apply rotations
+    or origin translations first.
 
 Example: ::
 
@@ -984,6 +988,8 @@ Example: ::
     origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - rotateFirst (*optional*, default = true): logical which determines whether to apply rotations
+    or origin translations first.
   - offsetMap (*optional*, default = all elements offset): map that specifies which elements
     of the lattice are offset with respect to the lattice origin. Elements with 1 are offset,
     while elements with a 0 are not. Must have the same size as the map. Allows creating, e.g.,
