@@ -129,7 +129,7 @@ needs to be available::
 
 Alternatively, if one does't have access to mpi_f08 and wants to compile SCONE without MPI support::
 
-     cmake -DSKPI_MPI=YES ./..
+     cmake -DSKIP_MPI=YES ./..
 
 #. Run make and install application
 
