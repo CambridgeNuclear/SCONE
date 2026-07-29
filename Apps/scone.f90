@@ -10,6 +10,7 @@ program scone
   use physicsPackage_inter,       only : physicsPackage
   use physicsPackageFactory_func, only : new_physicsPackage
   use vizPhysicsPackage_class,    only : vizPhysicsPackage
+  use renderPhysicsPackage_class, only : renderPhysicsPackage
   use timer_mod                 , only : registerTimer, timerStart, timerStop, timerTime, secToChar
 
   implicit none
@@ -27,6 +28,8 @@ program scone
   call addClOption('--omp', 1, ['int'], &
           'Number of OpenMP threads in a parallel calculation')
 #endif
+  call addClOption('--render', 0, ['int'],&
+          'Executes command-line ray plotting specified by a viz dict in the input file')
 
   ! Get path to input file
   call getInputFile(inputPath)
@@ -53,6 +56,9 @@ program scone
 
   if (clOptionIsPresent('--plot')) then
     allocate(vizPhysicsPackage :: core)
+    call core % init(input)
+  else if (clOptionIsPresent('--render')) then
+    allocate(renderPhysicsPackage :: core)
     call core % init(input)
   else
     allocate( core, source = new_physicsPackage(input))

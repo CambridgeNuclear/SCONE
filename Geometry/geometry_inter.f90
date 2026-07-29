@@ -1,7 +1,7 @@
 module geometry_inter
 
   use numPrecision
-  use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, HARDCODED_MAX_NEST, INFINITY, COLL_EV
+  use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, HARDCODED_MAX_NEST, INF, COLL_EV
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
   use charMap_class,      only : charMap
@@ -476,8 +476,9 @@ contains
   !!   mats [in]          -> List of materials which are transparent to rays
   !!   fov [in]           -> Field-of-view in the horizontal axis in radians
   !!   ambient [in]       -> Fraction of illumination which is ambient, rather than from the light
+  !!   bounds [in]        -> [-x, -y, -z, +x, +y, +z] bounds outside of which a ray hit can't occur
   !!
-  subroutine rayPlot(self, brightness, matIDs, camera, light, M, mats, fov, ambient)
+  subroutine rayPlot(self, brightness, matIDs, camera, light, M, mats, fov, ambient, bounds)
     class(geometry), intent(in)                       :: self
     real(defReal), dimension(:,:), intent(inout)      :: brightness
     integer(shortInt), dimension(:,:), intent(inout)  :: matIDs
@@ -487,6 +488,7 @@ contains
     integer(shortInt), dimension(:), intent(in)       :: mats
     real(defReal), intent(in)                         :: fov
     real(defReal), intent(in)                         :: ambient
+    real(defReal), dimension(6), intent(in)           :: bounds
     integer(shortInt)                                 :: iVert, nHoriz, nVert
     integer(shortInt), save                           :: iHoriz, matIdx
     real(defReal), save                               :: bright
@@ -516,7 +518,7 @@ contains
         call ray % init(camera, matmul(M,vec))
 
         ! Get local material and its illumination
-        call self % phongTrace(ray, matIdx, bright, mats, ambient, light)
+        call self % phongTrace(ray, matIdx, bright, mats, ambient, light, bounds)
         matIDs(iHoriz, iVert) = matIdx
         brightness(iHoriz, iVert) = bright
 
@@ -530,7 +532,7 @@ contains
   !! Procedure for tracing from a camera until an opaque object is hit. 
   !! Then calculates the luminous contribution from a light source.
   !!
-  subroutine phongTrace(self, ray, matIdx, bright, mats, ambient, light)
+  subroutine phongTrace(self, ray, matIdx, bright, mats, ambient, light, bounds)
     class(geometry), intent(in)                 :: self
     type(coordlist), intent(inout)              :: ray
     integer(shortInt), intent(out)              :: matIdx
@@ -538,31 +540,52 @@ contains
     integer(shortInt), dimension(:), intent(in) :: mats
     real(defReal), intent(in)                   :: ambient
     real(defReal), dimension(3), intent(in)     :: light
-    logical(defBool)                            :: lightTrace
-    real(defReal)                               :: dist, dotP, dNudge
+    real(defReal), dimension(6), intent(in)     :: bounds
+    logical(defBool)                            :: lightTrace, intersects
+    real(defReal)                               :: dist, dotP, dNudge, &
+                                                   dMin, dMax
     integer(shortInt)                           :: event, matIdx0
-    real(defReal), dimension(3)                 :: dir, normal0, normal
+    real(defReal), dimension(3)                 :: dir, normal0, normal, &
+                                                   nMin, nMax
 
     lightTrace = .true.
 
-    call self % placeCoord(ray)
+    ! Compute allowable distances between which the ray is inside the box
+    call boxIntersection(ray % lvl(1) % r, ray % lvl(1) % dir, bounds, &
+            dMin, dMax, nMin, nMax, intersects)
 
+    ! Move ray straight to box intersection point 
+    ray % lvl(1) % r = ray % lvl(1) % r + dMin * ray % lvl(1) % dir
+    call self % placeCoord(ray)
     matIdx = ray % matIdx
 
-    ! Trace until an opaque material is hit
+    normal0 = nMin
+
+    ! Early escape if the ray never intersects the opaque box
+    if (.not. intersects) then
+      bright = ZERO
+      return
+    end if
+
+    ! Trace until an opaque material or the tracking boundary is hit
+    dMax = dMax - dMin
     do while (any(mats == matIdx))
 
-      dist = INFINITY
+      dist = dMax
       call self % moveNoBC(ray, dist, event, normal0)
 
       matIdx = ray % matIdx
 
-      ! If distance is infinite or particle collided, not pointing towards anything opaque.
+      ! If particle collided outside or distance is infinite, 
+      ! it is not pointing towards anything opaque.
       ! Hence, short circuit the trace
-      if ((dist == INFINITY) .or. (event == COLL_EV)) then
+      if (event == COLL_EV .or. dist == INF) then
         lightTrace = .false.
         exit
       end if
+
+      ! Decrement the distance to the boundary
+      dMax = dMax - dist
 
     end do
 
@@ -588,25 +611,37 @@ contains
       
       ! Compute product betwen normal and light direction
       dotP = max(dot_product(normal0, dir), ZERO)
+    
+      ! Compute the short-circuit distance until ray escapes the box
+      call boxIntersection(ray % lvl(1) % r, ray % lvl(1) % dir, bounds, &
+              dMin, dMax, nMin, nMax, intersects)
 
       ! Does the ray fly directly to the light?
-      matIdx0 = ray % matIdx
-      do while (any(mats == matIdx0))
-      
-        ! Find maximum flight distance
-        dist = norm2(ray % lvl(1) % r - light)
-        call self % moveNoBC(ray, dist, event, normal)
-        
+      ! Goes through the box towards light
+      if (intersects) then
         matIdx0 = ray % matIdx
-
-        ! The ray flew straight to the light
-        if (event == COLL_EV) then
-          bright = (ONE - ambient) * dotP
-
-          exit
-        end if
+        do while (any(mats == matIdx0))
       
-      end do
+          ! Find maximum flight distance
+          dist = min(norm2(ray % lvl(1) % r - light), dMax)
+          call self % moveNoBC(ray, dist, event, normal)
+        
+          matIdx0 = ray % matIdx
+
+          ! The ray flew straight to the light
+          if (event == COLL_EV) then
+            bright = (ONE - ambient) * dotP
+            exit
+          end if
+
+          ! Decrement the distance until the box
+          dMax = dMax - dist
+      
+        end do
+      ! Needn't cross the box - goes straight to the light
+      else
+        bright = (ONE - ambient) * dotP
+      end if
 
       ! Add ambient contribution
       bright = bright + ambient
@@ -614,5 +649,83 @@ contains
     end if
 
   end subroutine phongTrace
+
+  !!
+  !! Returns the distance and normals for the two intersections
+  !! of a ray on a box, as well as whether it intersects at all.
+  !! Helper function for phongTrace.
+  !!
+  subroutine boxIntersection(r, omega, bounds, dMin, dMax, nMin, nMax, intersects)
+    real(defReal), dimension(3), intent(in)  :: r
+    real(defReal), dimension(3), intent(in)  :: omega
+    real(defReal), dimension(6), intent(in)  :: bounds
+    real(defReal), intent(out)               :: dMin
+    real(defReal), intent(out)               :: dMax
+    real(defReal), dimension(3), intent(out) :: nMin
+    real(defReal), dimension(3), intent(out) :: nMax
+    logical(defBool), intent(out)            :: intersects
+    integer(shortInt)                        :: i
+    real(defReal)                            :: d1, d2, invDir
+    real(defReal), dimension(3)              :: n1, n2
+
+    dMin = -INF
+    dMax = INF
+    nMin = ZERO
+    nMax = ZERO
+    intersects = .true.
+
+    do i = 1, 3
+
+      if (abs(omega(i)) < floatTol) then
+        ! Ray is parallel to slab
+        if (r(i) < bounds(i) .or. r(i) > bounds(i + 3)) then
+          dMax = -INF
+          exit
+        end if
+      else
+        invDir = ONE / omega(i)
+
+        d1 = (bounds(i) - r(i)) * invDir
+        d2 = (bounds(i + 3) - r(i)) * invDir
+
+        n1 = ZERO
+        n2 = ZERO
+
+        if (omega(i) > ZERO) then
+          n1(i) = -ONE
+          n2(i) = ONE
+        else
+          n1(i) = ONE
+          n2(i) = -ONE
+          invDir = d1
+          d1 = d2
+          d2 = invDir
+        end if
+
+        if (d1 > dMin) then
+          dMin = d1
+          nMin = n1
+        end if
+
+        if (d2 < dMax) then
+          dMax = d2
+          nMax = n2
+        end if
+
+        ! No intersection - escape
+        if (dMin > dMax) then
+          dMin = 0
+          dMax = INF
+          intersects = .false.
+          return
+        end if
+      end if
+
+    end do
+
+    if (dMin < ZERO) dMin = ZERO
+    if (dMax < dMin) intersects = .false.
+  
+  end subroutine boxIntersection
 
 end module geometry_inter

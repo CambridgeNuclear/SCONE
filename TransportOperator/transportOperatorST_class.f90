@@ -70,8 +70,8 @@ contains
       ! This branch is called in the case of voids with no imposed XS
       if (sigmaTrack < tol) then
         
-        dist = INFINITY
-        invSigmaTrack = INFINITY
+        dist = INF
+        invSigmaTrack = INF
         sigmaT = ZERO
 
       else
