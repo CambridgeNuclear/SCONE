@@ -22,6 +22,8 @@ such as graduate students to quickly test their ideas.
    Output
    Tutorials/index
    cream/index
+   Contributing
+   Community
    Governance
 
 
