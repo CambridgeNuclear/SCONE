@@ -2,13 +2,14 @@ module latUniverse_test
 
   use numPrecision
   use genericProcedures
-  use universalVariables, only : UNDEF_MAT
-  use dictionary_class,   only : dictionary
-  use dictParser_func,    only : charToDict
-  use charMap_class,      only : charMap
-  use coord_class,        only : coord
-  use surfaceShelf_class, only : surfaceShelf
-  use cellShelf_class,    only : cellShelf
+  use universalVariables,     only : UNDEF_MAT
+  use dictionary_class,       only : dictionary
+  use dictParser_func,        only : charToDict
+  use charMap_class,          only : charMap
+  use coord_class,            only : coord
+  use surfaceShelf_class,     only : surfaceShelf
+  use cellShelf_class,        only : cellShelf
+  use cartesianLattice_class, only : X_MIN, X_MAX, Y_MIN, Y_MAX, Z_MIN, Z_MAX
   use latUniverse_class
   use funit
 

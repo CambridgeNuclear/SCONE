@@ -9,6 +9,7 @@ add_sources( ./genericProcedures.f90
              ./charTape_class.f90
              ./grid_class.f90
              ./energyGrid_class.f90
+	     ./cartesianLattice_class.f90
              ./statisticalTests_func.f90
              ./timer_mod.f90
              ./charLib_func.f90

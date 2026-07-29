@@ -49,6 +49,11 @@ module sphere_class
     procedure :: going
     procedure :: normal
     procedure :: kill
+
+    ! Local procedures
+    procedure :: build
+    procedure :: getRadius
+    procedure :: getOrigin
   end type sphere
 
 contains
@@ -65,6 +70,28 @@ contains
     str = TYPE_NAME
 
   end function myType
+
+  !!
+  !! Return the radius of the sphere
+  !!
+  pure function getRadius(self) result(r)
+    class(sphere), intent(in) :: self
+    real(defReal)             :: r
+
+    r = self % r
+
+  end function getRadius
+
+  !!
+  !! Return the origin of the sphere
+  !!
+  pure function getOrigin(self) result(origin)
+    class(sphere), intent(in) :: self
+    real(defReal), dimension(3) :: origin
+
+    origin = self % origin
+
+  end function getOrigin
 
   !!
   !! Initialise sphere from a dictionary
@@ -107,6 +134,44 @@ contains
     call self % setTol( TWO * self % r * SURF_TOL)
 
   end subroutine init
+
+  !!
+  !! Build sphere from components
+  !!
+  !! Args:
+  !!   id [in]     -> Surface ID
+  !!   origin [in] -> Sphere origin
+  !!   radius [in] -> Sphere radius
+  !!
+  !! Errors:
+  !!   fatalError if id or radius are <= 0
+  !!
+  subroutine build(self, id, origin, radius)
+    class(sphere), intent(inout)            :: self
+    integer(shortInt), intent(in)           :: id
+    real(defReal), dimension(3), intent(in) :: origin
+    real(defReal), intent(in)               :: radius
+    character(100), parameter :: Here = 'build (sphere_class.f90)'
+
+    ! Check values
+    if (id < 1) then
+      call fatalError(Here,'Invalid surface id provided. ID must be > 1')
+
+    else if ( radius <= ZERO) then
+      call fatalError(Here, 'Radius of sphere must be +ve. Is: '//numToChar(radius))
+
+    end if
+
+    ! Load data
+    self % r_sq = radius * radius
+    self % r = radius
+    self % origin = origin
+    call self % setID(id)
+
+    ! Set surface tolerance
+    call self % setTol( TWO * self % r * SURF_TOL)
+
+  end subroutine build
 
   !!
   !! Return axis-aligned bounding box for the surface

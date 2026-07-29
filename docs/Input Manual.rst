@@ -1004,6 +1004,46 @@ Example: ::
    The order of the elements in the lattice is different from other MC codes, e.g.,
    Serpent. The lattice is written in the style *WYSIWYG*: What You See Is What You Get.
 
+* dispersionUniverse: universe containing potentially many spherical inclusions. Intended
+  to model, e.g., HTGR fuel containing TRISO.
+
+  - file: path to file containing information on the inclusions. The format of the file
+    contains the details of individual inclusions on each line. Each line must contain the
+    following information in order: radius x-origin y-origin z-origin fill.
+    Here fill can be either a material name or a universe in the format ``u<id>``.
+  - background: material or universe which occupies the space between inclusions. If a universe
+    this should use the format ``u<id>``.
+  - checkOverlap (*optionla*, default = false): logical flag which checks whether spheres overlap
+    during transport and visualisation. Slower, but guards against geometry errors. 
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    origin of the universe. [cm]
+  - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    rotation angles in degrees applied to the universe. [°]
+
+Example: ::
+
+      uni_disp { id 10; type dispersionUniverse; file /home/mySpheres.txt; background graphite;}
+
+* pebbleUniverse: the spherical analog of the pinUniverse. Several concentric spheres containing
+  either materials or other universes.
+
+  - radii: array containing the radii of the co-centred cylinders. There
+    must be an entry equal to 0.0, which corresponds to the outermost
+    layer, which is infinite. [cm]
+  - fills: array containing the names or ids of what is inside each cylindrical
+    shell. The order of the fills must correspond to the order of the corresponding
+    radii. An entry can be a material name, the keyword ``void``, or a   ``u<id>``,
+    where ``id`` is the id of a defined universe
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    origin of the universe. [cm]
+  - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    rotation angles in degrees applied to the universe. [°]
+
+Example: ::
+
+     triso { id 3; type pebbleUniverse; radii (0.025 0.035 0.039 0.0); 
+             fills (u<1> buffer pyC SiC graphite); }
+
 * rootUniverse: top level universe of geometry
 
   - border: id of the boundary surface for the whole geometry
