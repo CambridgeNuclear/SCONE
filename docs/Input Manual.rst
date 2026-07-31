@@ -1010,6 +1010,58 @@ Example: ::
    The order of the elements in the lattice is different from other MC codes, e.g.,
    Serpent. The lattice is written in the style *WYSIWYG*: What You See Is What You Get.
 
+* hexUniverse, axis-aligned hexagonal lattice of constant pitch. Has an analogous syntax with
+  the latUniverse.
+
+  - type: can be any of ``xHexLattice``, ``yHexLattice``, or ``zHexLattice``. The direction in
+    the name specifies which dimension is perpendicular to the hexagon. Note that one should not
+    use ``hexUniverse`` as the type.
+  - orientation: can be ``1`` or ``2``. Determines whether the first (1) or second (2) axis in
+    the hexagonal plane is perpendicular to the flat plane.
+  - pitch: (hexPitch axPitch) array with the in-plane and axial lattice pitches. 
+    In a 2D lattice, the value entered in the second dimension is not used. [cm]
+  - shape: (inPlane1 inPlane2 axial) array of integers, stating the numbers of elements in
+    the plane along the first dimension, in the plane along the second dimesion, and in the axial
+    dimension. The third entry can be set to 0 to have a 2D lattice.
+  - padmat: material name or universe index (u<id>) that fills the possible
+    extra space between the lattice and its bounding surface. Also the keyword
+    ``void`` is allowed.
+  - map: map that includes the universe ids of the elements of the lattice.
+    The order is: increasing inPlane1, increasing inPlane2 and then increasing axially.
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    origin of the universe. [cm]
+  - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    rotation angles in degrees applied to the universe. [°]
+  - rotateFirst (*optional*, default = true): logical which determines whether to apply rotations
+    or origin translations first.
+  - offsetMap (*optional*, default = all elements offset): map that specifies which elements
+    of the lattice are offset with respect to the lattice origin. Elements with 1 are offset,
+    while elements with a 0 are not. Must have the same size as the map.
+  - offset (*optional*, default = true): enables/disables the offset of all entries in
+    the latUniverse. Has relatively specialised use cases, e.g., imposing a discretisation
+    by placing another universe inside the lattice.
+
+Example: ::
+
+     hlatt { id 7;
+             type zHexLattice;
+             orientation 1;
+             pitch (1.5 3.0);       // (radial pitch, axial pitch)
+             shape (3 3 2);         // (N1, N2, N3)
+             padMat void;
+             map ( 1 2 3            // Top layer, back row
+                   4 5 6            // Top layer, middle row
+                   7 8 9            // Top layer, front row
+  
+                  10 11 12
+                  13 14 15
+                  16 17 18  );
+     }
+
+.. note::
+   The order of the elements in the lattice is different from other MC codes, e.g.,
+   Serpent. The lattice is written in the style *WYSIWYG*: What You See Is What You Get.
+
 * rootUniverse: top level universe of geometry
 
   - border: id of the boundary surface for the whole geometry
