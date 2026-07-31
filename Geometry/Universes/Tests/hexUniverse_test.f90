@@ -9,6 +9,9 @@ module hexUniverse_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use hexUniverse_class
+  ! Only use the surface id's
+  use hexagonalLattice_class, only : AX_MIN, AX_MAX, FACE1_POS, FACE1_NEG, FACE2_POS, &
+                                     FACE2_NEG, FACE3_POS, FACE3_NEG
   use funit
 
   implicit none
@@ -17,7 +20,7 @@ module hexUniverse_test
   ! uni1: 3D lattice, "point" orientation, hexagonal plane in x-y, stacked along z
   !   halfwidth = 1.0 (pitch 2.0), axial pitch = 5.0, shape 3 x 3 x 2
   character(*), parameter :: UNI1_DEF = &
-  "id 1; type zHexUniverse; orientation 1; pitch (2.0 5.0); shape (3 3 2); padMat void; &
+  "id 1; type zHexLattice; orientation 1; pitch (2.0 5.0); shape (3 3 2); padMat void; &
   & map ( 1 2 3   &
   &       4 5 6   &
   &       7 8 9   &
@@ -29,16 +32,16 @@ module hexUniverse_test
   ! uni2: 2D lattice (infinite along the axis), "flat" orientation, hexagonal plane in x-z,
   !   stacked (infinitely) along y. Background filled with a universe.
   character(*), parameter :: UNI2_DEF = &
-  "id 2; type yHexUniverse; orientation 2; pitch (2.0 0.0); shape (2 2 0); padMat u<7>; &
+  "id 2; type yHexLattice; orientation 2; pitch (2.0 0.0); shape (2 2 0); padMat u<7>; &
   & map ( 1 2   &
   &       2 1); "
 
   ! Variables
-  type(surfaceShelf)   :: surfs
-  type(cellShelf)      :: cells
-  type(charMap)        :: mats
-  type(hexUniverse) :: uni1
-  type(hexUniverse) :: uni2
+  type(surfaceShelf) :: surfs
+  type(cellShelf)    :: cells
+  type(charMap)      :: mats
+  type(hexUniverse)  :: uni1
+  type(hexUniverse)  :: uni2
 
 contains
 
@@ -185,14 +188,15 @@ contains
     @assertEqual(ref, d, TOL * ref)
     @assertEqual(FACE3_NEG, surfIdx)
 
-    ! Sat exactly on that face, still assigned to cell 5, moving further out -> distance ~ 0
+    ! Sat exactly on that face, still assigned to cell 5, moving further out.
+    ! Should give the distance within cell 6, as the cell ID is re-resolved.
     pos % r   = [ONE, ZERO, -2.5_defReal]
     pos % dir = [ONE, ZERO, ZERO]
-    pos % localId = 5
+    pos % localId = 6
 
     call uni1 % distance(d, surfIdx, pos)
 
-    @assertEqual(ZERO, d, TOL)
+    @assertEqual(TWO, d, TOL)
     @assertEqual(FACE3_NEG, surfIdx)
 
     ! From well outside the lattice, aimed straight at it -> outline surface, then a real hit

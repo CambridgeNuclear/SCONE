@@ -24,9 +24,9 @@ module universeFactory_func
   character(nameLen), dimension(*), parameter :: AVAILABLE_UNI = ['rootUniverse',&
                                                                   'cellUniverse',&
                                                                   'pinUniverse ',&
-                                                                  'xHexUniverse',&
-                                                                  'yHexUniverse',&
-                                                                  'zHexUniverse',&
+                                                                  'xHexLattice ',&
+                                                                  'yHexLattice ',&
+                                                                  'zHexLattice ',&
                                                                   'latUniverse ']
 
   ! Public Interface
@@ -76,7 +76,7 @@ contains
       case ('latUniverse')
         allocate(latUniverse :: ptr)
 
-      case ('xHexUNiverse', 'yHexUniverse', 'zHexUniverse')
+      case ('xHexLattice', 'yHexLattice', 'zHexLattice')
         allocate(hexUniverse :: ptr)
 
       case default

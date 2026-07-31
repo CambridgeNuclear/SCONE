@@ -10,6 +10,7 @@ add_sources( ./genericProcedures.f90
              ./grid_class.f90
              ./energyGrid_class.f90
              ./statisticalTests_func.f90
+	     ./hexagonalLattice_class.f90
              ./timer_mod.f90
              ./charLib_func.f90
              ./openmp_func.f90
@@ -25,4 +26,5 @@ add_unit_tests( ./Tests/grid_test.f90
                 ./Tests/timer_test.f90
                 ./Tests/conversions_test.f90
                 ./Tests/charLib_test.f90
+		./Tests/hexagonalLattice_test.f90
                 ./Tests/colours_test.f90)
