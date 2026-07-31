@@ -15,6 +15,7 @@ module universeFactory_func
   use cellUniverse_class, only : cellUniverse
   use pinUniverse_class,  only : pinUniverse
   use latUniverse_class,  only : latUniverse
+  use hexUniverse_class,  only : hexUniverse
   implicit none
   private
 
@@ -23,6 +24,9 @@ module universeFactory_func
   character(nameLen), dimension(*), parameter :: AVAILABLE_UNI = ['rootUniverse',&
                                                                   'cellUniverse',&
                                                                   'pinUniverse ',&
+                                                                  'xHexLattice ',&
+                                                                  'yHexLattice ',&
+                                                                  'zHexLattice ',&
                                                                   'latUniverse ']
 
   ! Public Interface
@@ -71,6 +75,9 @@ contains
 
       case ('latUniverse')
         allocate(latUniverse :: ptr)
+
+      case ('xHexLattice', 'yHexLattice', 'zHexLattice')
+        allocate(hexUniverse :: ptr)
 
       case default
         print '(A)', 'AVAILABLE UNIVERSES: '
