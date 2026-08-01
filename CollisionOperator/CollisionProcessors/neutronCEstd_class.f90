@@ -233,7 +233,7 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi, delay
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, kT, lambda, wD
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
@@ -302,6 +302,12 @@ contains
         if (self % makePrec .and. lambda < huge(lambda)) then
           pTemp % lambda = lambda
           pTemp % type = P_PRECURSOR
+
+        ! If not storing precursors, sample an emission time for
+        ! the resulting delayed neutron
+        elseif (lambda < huge(lambda)) then
+          delay = -log(p % pRNG % get()) / lambda
+          pTemp % time = p % time + delay
 
         end if
 
