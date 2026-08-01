@@ -313,7 +313,7 @@ contains
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
+    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, delay, &
                                             sig_scatter, totalElastic, kT
     logical(defBool)                     :: fiss_and_implicit, keepDel
     character(100),parameter             :: Here = 'implicit (neutronCEimp_class.f90)'
@@ -391,6 +391,12 @@ contains
           pTemp % lambda = lambda
           pTemp % type = P_PRECURSOR
 
+        ! If not storing precursors, sample an emission time for
+        ! the resulting delayed neutron
+        elseif (lambda < huge(lambda)) then
+          delay = -log(p % pRNG % get()) / lambda
+          pTemp % time = p % time + delay
+
         end if
 
         call nextCycle % detain(pTemp)
@@ -456,7 +462,8 @@ contains
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
-    real(defReal)                        :: sig_nufiss, sig_fiss, k_eff, kT, wD
+    real(defReal)                        :: sig_nufiss, sig_fiss, k_eff, kT, wD, &
+                                            delay
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
     if (.not. self % implicitSites) then
@@ -529,6 +536,12 @@ contains
         if (self % makePrec .and. lambda < huge(lambda)) then
           pTemp % lambda = lambda
           pTemp % type = P_PRECURSOR
+
+        ! If not storing precursors, sample an emission time for
+        ! the resulting delayed neutron
+        elseif (lambda < huge(lambda)) then
+          delay = -log(p % pRNG % get()) / lambda
+          pTemp % time = p % time + delay
 
         end if
 
