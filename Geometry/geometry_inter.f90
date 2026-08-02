@@ -1,7 +1,7 @@
 module geometry_inter
 
   use numPrecision
-  use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, HARDCODED_MAX_NEST, INFINITY, COLL_EV
+  use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, HARDCODED_MAX_NEST, INF, COLL_EV
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
   use charMap_class,      only : charMap
@@ -552,14 +552,14 @@ contains
     ! Trace until an opaque material is hit
     do while (any(mats == matIdx))
 
-      dist = INFINITY
+      dist = INF
       call self % moveNoBC(ray, dist, event, normal0)
 
       matIdx = ray % matIdx
 
       ! If distance is infinite or particle collided, not pointing towards anything opaque.
       ! Hence, short circuit the trace
-      if ((dist == INFINITY) .or. (event == COLL_EV)) then
+      if ((dist == INF) .or. (event == COLL_EV)) then
         lightTrace = .false.
         exit
       end if

@@ -67,17 +67,19 @@ module tallyAdmin_class
   !!   push   -> Push new attachment to the end of the list
   !!   pop    -> Remove attachment from the end of the list
   !!   getEnd -> Returns pointer to the ned of the list (does not remove it like pop)
-  !!   reportInColl     -> Process pre-collision reports in all clerks
-  !!   reportOutColl    -> Process post-collision reports in all clerks
-  !!   reportPath       -> Process pathlength reports in all clerks
-  !!   reportTrans      -> Process transition reports in all clerks
-  !!   reportSpawn      -> Process particle generation reports in all clerks
-  !!   reportHist       -> Process history reports in all clerks
-  !!   reportCycleStart -> Process start of cycle reports in all clerks
-  !!   reportCycleEnd   -> Process end of cycle reports in all clerks
-  !!   getResult        -> Return tallyResult object from a named Clerk
+  !!   reportInColl       -> Process pre-collision reports in all clerks
+  !!   reportOutColl      -> Process post-collision reports in all clerks
+  !!   reportPath         -> Process pathlength reports in all clerks
+  !!   reportTrans        -> Process transition reports in all clerks
+  !!   reportSpawn        -> Process particle generation reports in all clerks
+  !!   reportHist         -> Process history reports in all clerks
+  !!   reportCycleStart   -> Process start of cycle reports in all clerks
+  !!   reportCycleEnd     -> Process end of cycle reports in all clerks
+  !!   getResult          -> Return tallyResult object from a named Clerk
+  !!   collectDistributed -> Sums tally results from all ranks into the master
+  !!   resetMemory        -> Resets score memory for all tallies
   !!   display     -> Call "display" on all clerks registered to display
-  !!   isConverged -> Return .true. if all convergance targets have been reached
+  !!   isConverged -> Return .true. if all convergence targets have been reached
   !!   print       -> Prints results to an output file object
   !!
   !! SAMPLE DICTIOANRY INPUT:
@@ -151,6 +153,7 @@ module tallyAdmin_class
     ! Interaction procedures
     procedure :: getResult
     procedure :: collectDistributed
+    procedure :: resetMemory
 
     ! Display procedures
     procedure :: display
@@ -410,7 +413,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   True is all convergance targets have been reached. False otherwise.
+  !!   True if all convergence targets have been reached. False otherwise.
   !!
   !! Errors:
   !!   None
@@ -892,5 +895,15 @@ contains
     end select
 
   end subroutine addToReports
+
+  !!
+  !! Resets memory to a fresh state
+  !!
+  subroutine resetMemory(self)
+    class(tallyAdmin),intent(inout) :: self
+
+    call self % mem % reset()
+
+  end subroutine resetMemory
 
 end module tallyAdmin_class

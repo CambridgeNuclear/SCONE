@@ -131,11 +131,13 @@ contains
         ! Give error if the particle somehow ended in an undefined material
         case(UNDEF_MAT)
           print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in undefined material")
 
         ! Give error if the particle somehow ended in an overlap material
         case(OVERLAP_MAT)
           print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
 
         case default
@@ -195,8 +197,8 @@ contains
       ! This branch is called in the case of voids with no imposed XS
       if (sigmaTrack < tol) then
         
-        dist = INFINITY
-        invSigmaTrack = INFINITY
+        dist = INF
+        invSigmaTrack = INF
         sigmaT = ZERO
 
       else
@@ -251,12 +253,14 @@ contains
 
         ! Give error if the particle somehow ended in an undefined material
         case(UNDEF_MAT)
-          print*, 'Particle location: ', p % rGlobal()
+          print *, 'Particle location: ', p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in undefined material")
 
         ! Give error if the particle ended in an overlap material
         case(OVERLAP_MAT)
-          print*, 'Particle location: ', p % rGlobal()
+          print *, 'Particle location: ', p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
       
         case default

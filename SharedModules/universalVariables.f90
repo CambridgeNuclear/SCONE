@@ -18,11 +18,9 @@ module universalVariables
   integer(shortInt), parameter, public :: MAX_COL = 70 ! Maximum number of columns in console display
 
   ! Define variables which are important for tracking neutrons in the geometry
-  real(defReal), parameter, public :: INFINITY    = 2.0_defReal**63, &
-                                      surface_tol = 1.0e-12_defReal, & ! Tol. on closeness to surface
-                                      SURF_TOL    = 1.0E-12_defReal, &
-                                      INF         = 2.0_defReal**63, &
-                                      NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
+  real(defReal), parameter, public :: INF      = 2.0_defReal**63, &
+                                      SURF_TOL = 1.0E-12_defReal, &
+                                      NUDGE    = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Energy variables
   real(defReal), parameter, public :: MINIMUM_ENERGY = 1.0E-11_defReal, &

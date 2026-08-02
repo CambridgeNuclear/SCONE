@@ -274,7 +274,7 @@ contains
 
       do i = 1, n
         call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
-
+        
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
 
@@ -420,7 +420,7 @@ contains
     collDat % MT = self % nuc % invertInelastic(collDat % E, p % pRNG)
     reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if (.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
-
+    
     ! Scatter particle
     if (reac % inCMFrame()) then
       collDat % A =  self % nuc % getMass()
@@ -429,7 +429,7 @@ contains
       call self % scatterInLAB(p, collDat, reac)
     end if
 
-    ! Apply weigth change using ingoing collision particle energy
+    ! Apply weight change using ingoing collision particle energy
     p % w = p % w * reac % release(collDat % E)
 
   end subroutine inelastic

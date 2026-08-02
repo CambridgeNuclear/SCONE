@@ -22,11 +22,14 @@
 !!   timerReset    -> Reset a defined timer
 !!   timerTime     -> Get total elapsed time in Seconds
 !!
+!!   c_usleep       -> pauses SCONE for several microseconds
+!!
 !!
 module timer_mod
 
   use numPrecision
   use genericProcedures, only : fatalError
+  use iso_c_binding,     only : c_int
 
   implicit none
   private
@@ -38,6 +41,7 @@ module timer_mod
   public :: timerStop
   public :: timerReset
   public :: timerTime
+  public :: c_usleep
 
   !!
   !! This derived type allows to measure time in a program
@@ -76,6 +80,16 @@ module timer_mod
   !! Module parameters
   real(defReal),parameter     :: GROWTH_RATIO = 1.6_defReal
   integer(shortInt),parameter :: MIN_SIZE = 5
+
+  ! Interface to C usleep procedure
+  ! Takes microseconds as input
+  interface
+    subroutine c_usleep(useconds) bind(C, name="usleep")
+      import :: c_int
+      integer(c_int), value :: useconds
+    end subroutine
+  end interface
+
 
 contains
 
@@ -337,5 +351,6 @@ contains
     sec = real(self % elapsed_c, defReal) / rate
 
   end function toSec_stopWatch
+
 
 end module timer_mod

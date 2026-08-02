@@ -135,6 +135,7 @@ add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
 add_subdirectory(DataStructures)
+add_subdirectory(Coupling)
 
 ####################################################################################################
 # Compile SCONE static library

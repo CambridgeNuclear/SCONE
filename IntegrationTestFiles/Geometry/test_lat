@@ -45,5 +45,12 @@ nuclearData {
   }
 }
 
-
-
+density {
+type cartesianField;
+materials (all);
+origin (0 0 0);
+shape (4 4 0);
+pitch (0.63 0.63 0);
+default -1;
+all ( 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1);
+}

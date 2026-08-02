@@ -8,6 +8,8 @@ module geometryStd_iTest
   use coord_class,       only : coordList
   use geometryStd_class, only : geometryStd
   use materialMenu_mod,  only : mm_init => init
+  use geometryReg_mod,   only : gr_kill => kill
+  use fieldFactory_func, only : new_field
   use funit
 
   implicit none
@@ -213,8 +215,62 @@ contains
     @assertEqual(idx, coords % matIdx)
     @assertEqual(0.08_defReal, maxDist, TOL)
 
+    ! Add superimposed density field to complicate movement
+    tempDict => dict % getDictPtr('density')
+    call new_field(tempDict, nameDensity)
+
+    ! Place a particle and move it, ensuring the event is as expected
+    r = [-0.64_defReal, -1.18_defReal, 0.0_defReal]
+    u = [ONE, ZERO, ZERO]
+    call coords % init(r, u)
+    call geom % placeCoord(coords)
+    maxDist = 10.0_defReal
+
+    ! Cross the field
+    r_ref = [-0.63_defReal, -1.18_defReal, ZERO]
+    u_ref = [ONE, ZERO, ZERO]
+    call geom % move(coords, maxDist, event)
+    @assertEqual(r_ref, coords % lvl(1) % r, TOL)
+    @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
+    @assertEqual(FIELD_EV, event)
+    @assertEqual(0.01_defReal, maxDist, TOL)
+
+    ! Cross a cell rather than hit the field
+    maxDist = 1.0_defReal
+    r_ref = [ZERO, -1.18_defReal, ZERO]
+    u_ref = [ONE, ZERO, ZERO]
+    call geom % move(coords, maxDist, event)
+    @assertEqual(r_ref, coords % lvl(1) % r, TOL)
+    @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
+    @assertEqual(CROSS_EV, event)
+    @assertEqual(0.63_defReal, maxDist, TOL)
+
+    ! Collision close to the field crossing
+    maxDist = 0.629_defReal
+    r_ref = [0.629_defReal, -1.18_defReal, ZERO]
+    u_ref = [ONE, ZERO, ZERO]
+    call geom % move(coords, maxDist, event)
+    @assertEqual(r_ref, coords % lvl(1) % r, TOL)
+    @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
+    @assertEqual(COLL_EV, event)
+    @assertEqual(0.629_defReal, maxDist, TOL)
+    
+    ! Boundary crossing
+    u = [ZERO, -ONE, ZERO]
+    call coords % assignDirection(u)
+    maxDist = 2.0_defReal
+    
+    r_ref = [0.629_defReal, 1.26_defReal, ZERO]
+    u_ref = [ZERO, -ONE, ZERO]
+    call geom % move(coords, maxDist, event)
+    @assertEqual(r_ref, coords % lvl(1) % r, TOL)
+    @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
+    @assertEqual(BOUNDARY_EV, event)
+    @assertEqual(0.08_defReal, maxDist, TOL)
+    
     ! Kill geometry
     call geom % kill()
+    call gr_kill()
 
   end subroutine test_lattice_geom
 

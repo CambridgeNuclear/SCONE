@@ -43,6 +43,8 @@ module geometryReg_mod
 
   implicit none
   private
+    
+  integer(shortInt), parameter   :: NO_GEOM = -7, NO_FIELD = -8
 
   !!
   !! Small type to hold a single polymorphic geometry
@@ -86,8 +88,8 @@ module geometryReg_mod
   type(charMap)                                     :: fieldNameMap
     
   ! Save indices for speed. Avoids repeated calls to the character map
-  integer(shortInt)         :: temperatureIdx = -8
-  integer(shortInt)         :: densityIdx = -8
+  integer(shortInt) :: temperatureIdx = NO_FIELD
+  integer(shortInt) :: densityIdx = NO_FIELD
 
 contains
 
@@ -107,13 +109,12 @@ contains
     class(geometry), allocatable, intent(inout) :: geom
     character(nameLen), intent(in)              :: name
     integer(shortInt)                           :: idx
-    integer(shortInt), parameter :: NOT_PRESENT = -7
     character(100), parameter    :: Here = 'addGeom (geometryReg_mod.f90)'
 
     ! Get free index
-    idx = geometryNameMap % getOrDefault(name, NOT_PRESENT)
+    idx = geometryNameMap % getOrDefault(name, NO_GEOM)
 
-    if (idx /= NOT_PRESENT) then
+    if (idx /= NO_GEOM) then
       call fatalError(Here, 'Geometry with name: '//trim(name)//' has already been defined with &
                             &idx: '//numToChar(idx))
     else
@@ -145,11 +146,10 @@ contains
   function geomIdx(name) result(idx)
     character(nameLen), intent(in) :: name
     integer(shortInt)              :: idx
-    integer(shortInt), parameter   :: NOT_PRESENT = -8
     character(*), parameter :: Here = 'geomIdx (geometryReg_mod.f90)'
 
-    idx = geometryNameMap % getOrDefault(name, NOT_PRESENT)
-    if (idx == NOT_PRESENT) then
+    idx = geometryNameMap % getOrDefault(name, NO_GEOM)
+    if (idx == NO_GEOM) then
       call fatalError(Here, 'Geometry: '//trim(name)//' was not found.')
     end if
 
@@ -217,13 +217,12 @@ contains
     class(field), allocatable, intent(inout) :: kentta
     character(nameLen), intent(in)           :: name
     integer(shortInt)                        :: idx
-    integer(shortInt), parameter :: NOT_PRESENT = -7
     character(100), parameter    :: Here = 'addField (geometryReg_mod.f90)'
 
     ! Get free index
-    idx = fieldNameMap % getOrDefault(name, NOT_PRESENT)
+    idx = fieldNameMap % getOrDefault(name, NO_FIELD)
 
-    if (idx /= NOT_PRESENT) then
+    if (idx /= NO_FIELD) then
       call fatalError(Here, 'Field with name: '//trim(name)//' has already been defined with &
                             &idx: '//numToChar(idx))
     else
@@ -241,7 +240,7 @@ contains
     elseif (name == nameDensity) then
       densityIdx = idx
     end if
-
+    
     ! Point field
     call move_alloc(kentta, fields(idx) % kentta)
 
@@ -259,7 +258,6 @@ contains
   pure function hasField(name) result(exists)
     character(nameLen), intent(in) :: name
     logical(defBool)               :: exists
-    integer(shortInt), parameter   :: NOT_PRESENT = -8
     integer(shortInt)              :: idx
 
     select case(name)
@@ -268,10 +266,10 @@ contains
       case(nameDensity)
         idx = densityIdx
       case default 
-        idx = fieldNameMap % getOrDefault(name, NOT_PRESENT)
+        idx = fieldNameMap % getOrDefault(name, NO_FIELD)
     end select
 
-    exists = (idx /= NOT_PRESENT)
+    exists = (idx /= NO_FIELD)
 
   end function hasField
 
@@ -290,11 +288,10 @@ contains
   function fieldIdx(name) result(idx)
     character(nameLen), intent(in) :: name
     integer(shortInt)              :: idx
-    integer(shortInt), parameter   :: NOT_PRESENT = -8
     character(*), parameter :: Here = 'fieldIdx (geometryReg_mod.f90)'
 
-    idx = fieldNameMap % getOrDefault(name, NOT_PRESENT)
-    if (idx == NOT_PRESENT) then
+    idx = fieldNameMap % getOrDefault(name, NO_FIELD)
+    if (idx == NO_FIELD) then
       call fatalError(Here, 'Field: '//trim(name)//' was not found.')
     end if
 
@@ -319,7 +316,6 @@ contains
     character(nameLen), intent(in) :: name
     class(field), pointer          :: ptr
     integer(shortInt)              :: idx
-    integer(shortInt), parameter   :: NOT_PRESENT = -8
     character(*), parameter :: Here = 'fieldPtrName (geometryReg_mod.f90)'
 
     select case(name)
@@ -328,7 +324,7 @@ contains
       case(nameDensity)
         idx = densityIdx
       case default
-        idx = NOT_PRESENT
+        idx = NO_FIELD
     end select
     
     if (idx < 1 .or. idx > fieldTop) then
@@ -394,6 +390,9 @@ contains
       deallocate(fields)
     end if
     fieldTop = 0
+    
+    temperatureIdx = NO_FIELD
+    densityIdx = NO_FIELD
 
   end subroutine kill
 

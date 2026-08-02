@@ -130,7 +130,7 @@ contains
     ! Check for invalid pitch
     if (any(self % pitch < 10 * SURF_TOL)) then
      call fatalError(Here, 'Pitch size must be larger than: '//numToChar( 10 * SURF_TOL))
-   end if
+    end if
 
     ! Calculate halfwidth and corner
     self % a_bar = self % pitch * HALF - SURF_TOL
@@ -163,14 +163,20 @@ contains
     end if
 
     ! Size field value array
-    self % N = product(self % sizeN * self % nMat)
+    self % N = product(self % sizeN) * self % nMat
     allocate(self % val(self % N + 1))
 
     ! Read field values for each material
     idx0 = 0
     do i = 1, size(mats)
 
+      if (allocated(temp)) deallocate(temp)
       call dict % get(temp, mats(i))
+
+      ! Ensure size is as expected
+      if (size(temp) /= product(self % sizeN)) call fatalError(Here,&
+              'Invalid input size to field. Should be '//numToChar(self % sizeN)//'. '//&
+              'Was: '//numToChar(size(temp)))
 
       ! Flip array up-down for more natural input
       ! Reshape into rank 2 array
@@ -347,6 +353,7 @@ contains
     self % nMat = 0
     self % corner = ZERO
     self % a_bar  = ZERO
+    if (allocated(self % matIdxs)) deallocate(self % matIdxs)
     call self % outline % kill()
 
   end subroutine kill

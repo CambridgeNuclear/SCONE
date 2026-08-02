@@ -360,7 +360,7 @@ contains
     trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
       
     ! Use imposed temperature if given
-    if (temp <= ZERO) then
+    if (temp < ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV
@@ -373,8 +373,8 @@ contains
       densityFactor = rho
     end if
 
-    ! Loop over nuclides
-    do i = 1,size(self % nuclides)
+    ! Loop over nuclides until one is sampled
+    nucLoop: do i = 1,size(self % nuclides)
 
       nucIdx = self % nuclides(i)
       dens = self % dens(i) * densityFactor
@@ -440,17 +440,17 @@ contains
 
           end if
 
-          ! Exit function, return the sampled nucIdx
           return
 
         end if
 
       end associate
 
-    end do
+    end do nucLoop
 
     ! Print error message as the inversion failed
     call fatalError(Here,'Nuclide sampling loop failed to terminate')
+    
 
   end subroutine sampleNuclide
 
@@ -503,7 +503,7 @@ contains
     end if
     
     ! Use imposed temperature if given
-    if (temp <= ZERO) then
+    if (temp < ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV
@@ -599,7 +599,7 @@ contains
     end if
     
     ! Use imposed temperature if given
-    if (temp <= ZERO) then
+    if (temp < ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV
@@ -691,7 +691,7 @@ contains
     end if
     
     ! Use imposed temperature if given
-    if (temp <= ZERO) then
+    if (temp < ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV

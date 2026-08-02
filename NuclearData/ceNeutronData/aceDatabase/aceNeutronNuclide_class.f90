@@ -322,6 +322,24 @@ contains
     if (allocated(self % mainData)) deallocate(self % mainData)
     if (allocated(self % eGrid))    deallocate(self % eGrid)
     call self % idxMT % kill()
+    
+    ! Clean S(alpha, beta)
+    if (allocated(self % thData)) then
+      do i = 1, size(self % thData)
+        call self % thData(i) % kill()
+      end do  
+      deallocate(self % thData)
+      self % SabEl = ZERO
+      self % SabInel = ZERO
+      self % hasThData = .false.
+      self % stochasticMixing = .false.
+    end if
+
+    ! Clean URR
+    self % urrE = ZERO
+    call self % probTab % kill()
+    self % hasProbTab = .false.
+    self % IFF = 0
 
   end subroutine kill
 
@@ -988,66 +1006,84 @@ contains
   end subroutine initUrr
 
   !!
-  !! Initialise thermal scattering tables from ACE card
+  !! Initialise thermal scattering tables from ACE card.
+  !! If the array has size greater than 1, activates stochastic mixing treatment.
   !!
   !! Args:
-  !!   ACE1 [inout]   -> ACE S(a,b) card
-  !!   ACE2 [inout]   -> Optional second ACE S(a,b) card
+  !!   ACE [inout]   -> array of ACE S(a,b) cards
   !!
   !! Errors:
   !!   fatalError if the inelastic scattering S(a,b) energy grid starts at a
-  !!   lower energy than the nuclide energy grid
+  !!   lower energy than the nuclide energy grid.
   !!
-  subroutine initSab(self, ACE1, ACE2)
-    class(aceNeutronNuclide), intent(inout)    :: self
-    class(aceSabCard), intent(inout)           :: ACE1
-    class(aceSabCard), intent(inout), optional :: ACE2
-    real(defReal), dimension(2)                :: EBounds
-    real(defReal)                              :: T1, T2
-    type(thermalData)                          :: temp
+  !!   fatalError if any of the input temperatures are equal.
+  !!
+  subroutine initSab(self, ACE)
+    class(aceNeutronNuclide), intent(inout)        :: self
+    class(aceSabCard), dimension(:), intent(inout) :: ACE
+    real(defReal), dimension(2)                    :: EBounds
+    real(defReal)                                  :: T
+    integer(shortInt)                              :: nFiles
+    type(thermalData)                              :: temp
+    integer(shortInt)                              :: i, j
     character(100), parameter :: Here = "initSab (aceNeutronNuclide_class.f90)"
 
-    if (present(ACE2)) then
-      allocate(self % thData(2))
-    else
-      allocate(self % thData(1))
-    end if
+    self % hasThData = .true.
+    nFiles = size(ACE)
+    allocate(self % thData(nFiles))
+    if (nFiles > 1) self % stochasticMixing = .true.
 
     ! Initialise S(a,b) class from ACE file
-    call self % thData(1) % init(ACE1)
-    self % hasThData = .true.
+    do i = 1, nFiles
+      call self % thData(i) % init(ACE(i))
+      
+      if (i == 1) then
+        ! Initialise energy boundaries
+        self % SabInel = self % thData(1) % getEBounds('inelastic')
+        self % SabEl = self % thData(1) % getEBounds('elastic')
 
-    ! Initialise energy boundaries
-    self % SabInel = self % thData(1) % getEBounds('inelastic')
-    self % SabEl = self % thData(1) % getEBounds('elastic')
+      else
+        ! Ensure energy bounds are conservative
+        EBounds = self % thData(i) % getEBounds('inelastic')
+        if (EBounds(1) > self % SabInel(1)) self % SabInel(1) = EBounds(1)
+        if (EBounds(2) < self % SabInel(2)) self % SabInel(2) = EBounds(2)
+      
+        EBounds = self % thData(i) % getEbounds('elastic')
+        if (EBounds(1) > self % SabEl(1)) self % SabEl(1) = EBounds(1)
+        if (EBounds(2) < self % SabEl(2)) self % SabEl(2) = EBounds(2)
 
-    ! Add second S(a,b) file for stochastic mixing
-    if (present(ACE2)) then
-
-      self % stochasticMixing = .true.
-      call self % thData(2) % init(ACE2)
-
-      ! Ensure energy bounds are conservative
-      EBounds = self % thData(2) % getEBounds('inelastic')
-      if (EBounds(1) > self % SabInel(1)) self % SabInel(1) = EBounds(1)
-      if (EBounds(2) < self % SabInel(2)) self % SabInel(2) = EBounds(2)
-
-      EBounds = self % thData(2) % getEbounds('elastic')
-      if (EBounds(1) > self % SabEl(1)) self % SabEl(1) = EBounds(1)
-      if (EBounds(2) < self % SabEl(2)) self % SabEl(2) = EBounds(2)
-
-      ! Identify which data is higher temperature and which is lower
-      ! 1 should be lower than 2 - swap if necessary
-      T1 = self % thData(1) % getTemperature()
-      T2 = self % thData(2) % getTemperature()
-
-      if (T1 > T2) then
-        temp = self % thData(1)
-        self % thData(1) = self % thData(2)
-        self % thData(2) = temp
       end if
 
+    end do
+
+    ! Rearrange files to be in order of ascending temperature
+    if (nFiles > 1) then
+      do i = 2, nFiles
+        temp = self % thData(i)
+        T = temp % getTemperature()
+        j = i - 1
+
+        do while (j >= 1)
+          if (self % thData(j) % getTemperature() <= T) exit
+          self % thData(j+1) = self % thData(j)
+          j = j - 1
+        end do
+
+        self % thData(j+1) = temp
+      end do
+    
+      ! Check to ensure all temperatures are unique
+      T = self % thData(1) % getTemperature() / kBoltzmannMeV
+      do i = 2, nFiles
+        if (abs(T - self % thData(i) % getTemperature()) / kBoltzmannMeV < 1.0E-6) call fatalError(&
+                Here,'S(alpha,beta) files have been input with the same temperature. '//&
+                'Data '//numToChar(i-1)//': '//numToChar(T)//'.  Data '//numToChar(i)//&
+                ': '//numToChar(self % thData(i) % getTemperature()/kBoltzmannMeV))
+        T = self % thData(i) % getTemperature() / kBoltzmannMeV
+      end do
+
     end if
+
 
     ! Check consistency of energy grid
     if (self % SabInel(1) < self % eGrid(1)) then
@@ -1064,6 +1100,11 @@ contains
   !! Returns the Sab index for later consistent handling
   !! of angular distributions by storing in a cache
   !!
+  !! Errors:
+  !!   fatalError if requested temperature is outside of the possible temperature range
+  !!
+  !!   fatalError if the linear search over temperatures for interpolation fails
+  !!
   subroutine getSabPointer(self, kT, rand, ptr, idx)
     class(aceNeutronNuclide), intent(in), target :: self
     real(defReal), intent(in)                    :: kT
@@ -1071,23 +1112,35 @@ contains
     type(thermalData), pointer, intent(out)      :: ptr
     integer(shortInt), intent(out)               :: idx
     real(defReal)                                :: kT1, kT2
+    real(defReal), dimension(2)                  :: kTMax
+    integer(shortInt)                            :: i
     character(100), parameter :: Here = "getSabPointer (aceNeutronNuclide_class.f90)"
 
     if (self % stochasticMixing) then
-      kT1 = self % thData(1) % getTemperature()
-      kT2 = self % thData(2) % getTemperature()
+      kTMax = self % getSabTBounds()
 
-      if ((kT < kT1) .or. (kT > kT2)) call fatalError(Here,&
+      if ((kT < kTMax(1)) .or. (kT > kTMax(2))) call fatalError(Here,&
               'Requested temperature '//numToChar(kT)//' not in temperature bounds: '//&
-              numToChar(kT1)//' and '//numToChar(kT2))
+              numToChar(kTMax(1))//' and '//numToChar(kTMax(2)))
 
-      if ((kT2 - kT)/(kT2 - kT1) > rand % get()) then
-        ptr => self % thData(1)
-        idx = 1
-      else
-        ptr => self % thData(2)
-        idx = 2
-      end if
+      ! Search through temperatures to find the interpolation range
+      do i = 1, size(self % thData) - 1
+        if (kT <= self % thData(i+1) % getTemperature()) then
+          kT1 = self % thData(i) % getTemperature()
+          kT2 = self % thData(i+1) % getTemperature()
+        
+          if ((kT2 - kT)/(kT2 - kT1) > rand % get()) then
+            idx = i
+          else
+            idx = i + 1
+          end if
+          ptr => self % thData(idx)
+          return
+        end if
+      end do
+
+      call fatalError(Here,'Temperature search failed. Requested temperature '//numToChar(kT)//&
+              ' exceed maximum: '//numToChar(self % thData(i+1) % getTemperature()))
     else
       ptr => self % thData(1)
       idx = 1
@@ -1099,13 +1152,13 @@ contains
   !! Return the temperature bounds of S(alpha,beta) data
   !! If only one library, both bounds are the same temperature
   !!
-  function getSabTBounds(self) result(kT)
+  pure function getSabTBounds(self) result(kT)
     class(aceNeutronNuclide), intent(in)  :: self
     real(defReal), dimension(2)           :: kT
 
     kT(1) = self % thData(1) % getTemperature()
     if (self % stochasticMixing) then
-      kT(2) = self % thData(2) % getTemperature()
+      kT(2) = self % thData(size(self % thData)) % getTemperature()
     else
       kT(2) = kT(1)
     end if
@@ -1117,7 +1170,7 @@ contains
   !!
   !! Prints:
   !!   nucIdx; Size of Energy grid; Maximum and Minumum energy; Mass; Temperature; ACE ZAID;
-  !!   MT numbers used in tranposrt (active MTs) and not used in transport (inactiveMTs)
+  !!   MT numbers used in transport (active MTs) and not used in transport (inactiveMTs)
   !!
   !! NOTE: For Now Formatting is horrible. Can be used only for debug
   !!       MT = 18 may appear as inactive MT but is included from FIS block !
@@ -1151,7 +1204,6 @@ contains
     allMT = size(self % MTdata)
     print '(A)', "Active MTs: "  // numToChar(self % MTdata(1:sMT) % MT)
     print '(A)', "Inactive MTs: "// numToChar(self % MTdata(sMT+1:allMT) % MT)
-    print '(A)', "This implementation ignores MT=5 (N,anything) !"
 
   end subroutine display
 

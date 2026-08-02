@@ -10,6 +10,7 @@ module aceNeutronDatabase_class
   use RNG_class,          only : RNG
   use charMap_class,      only : charMap
   use intMap_class,       only : intMap
+  use hashFunctions_func, only : FNV_1
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,        only : nuclearDatabase
@@ -123,6 +124,7 @@ module aceNeutronDatabase_class
     procedure :: updateTotalTempMajXS
     procedure :: updateRelEnMacroXSs
     procedure :: makeNuclideName
+    procedure :: computeMaxTrackXS
 
   end type aceNeutronDatabase
 
@@ -416,14 +418,14 @@ contains
       if (present(temp)) then
         T = temp
       else
-        T = -ONE
+        T = NO_TEMPERATURE
       end if
       matCache % T_track = T
 
       if (present(rho)) then
         densityFactor = rho
       else
-        densityFactor = -ONE
+        densityFactor = NO_DENSITY
       end if
       matCache % rho_track = densityFactor
 
@@ -452,6 +454,8 @@ contains
   !! Args:
   !!   E [in]         -> Incident neutron energy for which temperature majorant is found
   !!   matIdx [in]    -> Index of material for which the material temperature majorant is found
+  !!   temp [in]      -> Temperature, in Kelvin, locally
+  !!   rho [in]       -> Density scaling factor (dimensionless) locally
   !!
   subroutine updateTotalTempMajXS(self, E, matIdx, temp, rho)
     class(aceNeutronDatabase), intent(in) :: self
@@ -469,7 +473,7 @@ contains
       matCache % trackXS = ZERO
 
       ! Use imposed temperature if given
-      if (temp <= ZERO) then
+      if (temp < ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -499,6 +503,52 @@ contains
     end associate
 
   end subroutine updateTotalTempMajXS
+  
+  !!
+  !! This subroutine exists to simplify the construction of the majorant in the presence
+  !! of a temperature field. It updates the materialCache to have the largest cross section
+  !! of two if evaluated at two different temperatures: an imposed temperature and the input
+  !! material temperature.
+  !!
+  !! The majorant cross section at a given energy point may be given by either the higher
+  !! or lower of the possible temperatures. If a temperature field is imposed (where the
+  !! temperature will vary spatially across a given material) then the majorant should
+  !! be chosen appropriately/conservatively.
+  !!
+  subroutine computeMaxTrackXS(self, E, matIdx, maxTemp, rho)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    integer(shortInt), intent(in)         :: matIdx
+    real(defReal), intent(in)             :: maxTemp
+    real(defReal), intent(in)             :: rho
+    real(defReal)                         :: xs1, xs2
+
+    associate (matCache => cache_materialCache(matIdx))
+
+      ! Clean current total XS
+      matCache % trackXS = ZERO
+
+      ! If no temperature is given then the usual majorant from the material
+      ! temperature is fine and we needn't go further
+      if (maxTemp < ZERO) then
+        call self % updateTotalTempMajXS(E, matIdx, maxTemp, rho)
+      
+      ! Otherwise, compute the xs for both the material temperature and the given
+      ! max temperature
+      else
+        call self % updateTotalTempMajXS(E, matIdx, NO_TEMPERATURE, rho)
+        xs1 = matCache % trackXS
+        
+        call self % updateTotalTempMajXS(E, matIdx, maxTemp, rho)
+        xs2 = matCache % trackXS
+
+        matCache % trackXS = max(xs1, xs2)
+
+      end if
+
+    end associate
+
+  end subroutine computeMaxTrackXS
 
   !!
   !! Make sure that totalXS of material with matIdx is at energy E
@@ -525,7 +575,7 @@ contains
       matCache % rho_tot = rho
       
       ! Use imposed temperature if given
-      if (temp <= ZERO) then
+      if (temp < ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -563,7 +613,6 @@ contains
         matCache % xss % total = matCache % xss % total * densityFactor
 
       end if
-    
       matCache % T_tot = temp
 
     end associate
@@ -594,7 +643,7 @@ contains
       matCache % rho_tot = rho
       
       ! Use imposed temperature if given
-      if (temp <= ZERO) then
+      if (temp < ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -832,7 +881,7 @@ contains
 
       ! Catch negative dkT - perhaps due to input field values
       if (deltakT < ZERO) call fatalError(Here,&
-              'Invalid input temperatureL '//numToChar(kT/kBoltzmannMeV))
+              'Invalid input temperature: '//numToChar(kT/kBoltzmannMeV))
 
       ! Check if an update is required
       if (nucCache % E_maj /= E .or. nucCache % deltakT /= deltakT) then
@@ -879,19 +928,21 @@ contains
     type(materialItem), pointer                      :: mat
     class(ceNeutronDatabase), pointer                :: ptr_ceDatabase
     type(charMap)                                    :: nucSet
+    type(dictionary)                                 :: sabDict
     type(aceCard)                                    :: ACE
-    type(aceSabCard)                                 :: ACE_Sab1, ACE_Sab2
+    type(aceSabCard), dimension(:), allocatable      :: ACE_Sab
+    character(nameLen), dimension(:), allocatable    :: fileNames
     character(pathLen)                               :: aceLibPath
-    character(nameLen)                               :: name, name_file1, name_file2, nucDBRC_temp
-    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx, idx1, idx2
+    character(nameLen)                               :: nucDBRC_temp, name
+    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
     character(nameLen),dimension(:),allocatable      :: nucDBRC
     real(defReal)                                    :: A, nuckT, eUpSab, eUpSabNuc, &
                                                         eLowURR, eLowUrrNuc, alpha, &
-                                                        deltakT, eUpper, eLower, kT, &
-                                                        temp
+                                                        deltakT, eUpper, eLower, &
+                                                        temp, kT
     real(defReal), dimension(2)                      :: sabT
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
@@ -912,6 +963,9 @@ contains
     ptr_ceDatabase => ceNeutronDatabase_CptrCast(ptr)
     if(.not.associated(ptr_ceDatabase)) call fatalError(Here,"Should not happen. WTF?!")
 
+    ! Initialise dictionary to store S(a,b) info
+    call sabDict % init(1)
+
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
     do i = 1, mm_nMat()
@@ -922,6 +976,11 @@ contains
       do j = 1, size(mat % nuclides)
         name = self % makeNuclideName(mat % nuclides(j))
         call nucSet % add(name, IN_SET)
+
+        ! Add S(alpha,beta) data
+        if (mat % nuclides(j) % hasSab) then
+          call sabDict % store(name, mat % nuclides(j) % file_Sab)
+        end if
       end do
     end do
 
@@ -994,41 +1053,41 @@ contains
     nucIdx = 1
     do while (i /= nucSet % end())
 
-      idx1 = index(nucSet % atKey(i),'+')
-      idx2 = index(nucSet % atKey(i),'#')
-      if (idx1 /= 0) then
-        name = trim(nucSet % atKey(i))
-        if (idx2 == 0) then
-          name_file1 = trim(name(idx1+1:nameLen))
-        else
-          name_file1 = trim(name(idx1+1:idx2-1))
-          name_file2 = trim(name(idx2+1:nameLen))
-        end if
-        name = name(1:idx1-1)
-      else
-        name = nucSet % atKey(i)
+      name = trim(nucSet % atKey(i))
+      
+      ! Get Sab filenames
+      if (sabDict % isPresent(name)) then
+        call sabDict % get(fileNames, name)
+
+        ! Truncate name to remove hash
+        idx = index(name,'_')
+        if (idx == 0) call fatalError(Here,'Failed to parse Sab nuclide: '//name)
+        name = name(1:idx-1)
       end if
 
       if (loud) then
         call statusMsg("Building: "// trim(name)// " with index: " //numToChar(nucIdx))
-        if (idx1 /= 0 .and. idx2 == 0) &
-            call statusMsg("including S(alpha,beta) tables with file: " //trim(name_file1))
-        if (idx1 /= 0 .and. idx2 /= 0) &
-            call statusMsg("including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2))
+        if (allocated(fileNames)) then
+          call statusMsg("including S(alpha,beta) tables with files: ")
+          do idx = 1, size(fileNames)
+            call statusMsg(fileNames(idx))
+          end do
+        end if
       end if
 
       call new_neutronACE(ACE, name)
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
 
       ! Initialise S(alpha,beta) tables
-      if (idx1 /= 0 ) then
-        call new_moderACE(ACE_Sab1, name_file1)
-        if (idx2 /= 0) then
-          call new_moderACE(ACE_Sab2, name_file2)
-          call self % nuclides(nucIdx) % initSab(ACE_Sab1, ACE_Sab2)
-        else
-          call self % nuclides(nucIdx) % initSab(ACE_Sab1)
-        end if
+      if (allocated(fileNames)) then
+        allocate(ACE_Sab(size(fileNames)))
+        do idx = 1, size(fileNames)
+          call new_moderACE(ACE_Sab(idx), fileNames(idx))
+        end do
+        call self % nuclides(nucIdx) % initSab(ACE_Sab)
+        fileNames = ''
+        deallocate(fileNames)
+        deallocate(ACE_Sab)
       end if
 
       ! Initialise probability tables
@@ -1077,7 +1136,7 @@ contains
           kT = mat % T * kBoltzmannMev
           if ((kT < sabT(1)) .or. (kT > sabT(2))) call fatalError(Here,&
                 'Material temperature must be bounded by the provided S(alpha,beta) data. '//&
-                'The material temperature is '//numToChar(kT / kBoltzmannMeV)//&
+                'The material temperature is '//numToChar(mat % T)//&
                 'K while the data bounds are '//numToChar(sabT(1) / kBoltzmannMeV)//&
                 'K and '//numToChar(sabT(2) / kBoltzmannMeV)//'K.')
         end if
@@ -1171,7 +1230,8 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     type(nuclideInfo), intent(in)         :: nuclide
     character(nameLen)                    :: name
-    character(:), allocatable             :: file
+    character(:), allocatable             :: extension
+    integer(shortInt)                     :: i, hash
 
     name = trim(nuclide % toChar())
 
@@ -1180,17 +1240,13 @@ contains
     ! scattering
     if (nuclide % hasSab) then
 
-      file = trim(nuclide % file_Sab1)
-      name = trim(name) // '+' // file
-      deallocate(file)
+      extension = ''
+      do i = 1, size(nuclide % file_Sab)
+        extension = trim(extension)//'_'// trim(nuclide % file_Sab(i))
+      end do
 
-      ! Attach second Sab file for stochastic mixing
-      if (nuclide % sabMix) then
-        file = trim(nuclide % file_Sab2)
-        name = trim(name) // '#' // file
-        deallocate(file)
-      end if
-
+      call FNV_1(extension, hash)
+      name = trim(name) //'_'// numToChar(hash)
     end if
 
   end function makeNuclideName
@@ -1353,12 +1409,12 @@ contains
     ! Check maxTemp is present and sensible
     if (present(maxTemp)) then
       if (maxTemp < ZERO) then
-        broadenTemp = -ONE
+        broadenTemp = NO_TEMPERATURE
       else
         broadenTemp = maxTemp
       end if
     else
-      broadenTemp = -ONE
+      broadenTemp = NO_TEMPERATURE
     end if
     
     ! Check scaleDensity is present and sensible
@@ -1568,8 +1624,9 @@ contains
         matIdx = self % activeMat(j)
 
         ! Get material tracking cross section
-        if (self % materials(matIdx) % hasTMS .and. broadenTemp > ZERO) then
-          call self % updateTrackMatXS(E, matIdx, temp = broadenTemp, rho = densityFactor, rand = rand)
+        if (self % materials(matIdx) % useTMS(E) .and. broadenTemp > ZERO) then
+          call self % computeMaxTrackXS(E, matIdx, maxTemp = broadenTemp, rho = densityFactor)
+          !call self % updateTrackMatXS(E, matIdx, temp = broadenTemp, rho = densityFactor, rand = rand)
         else
           call self % updateTrackMatXS(E, matIdx, rho = densityFactor, rand = rand)
         end if
@@ -1597,8 +1654,8 @@ contains
                 nucXS = urrMaj
               end if
 
-            ! Update total material cross section
-            trackXS = trackXS + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
+              ! Update total material cross section
+              trackXS = trackXS + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
 
             end if
 

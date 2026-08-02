@@ -117,7 +117,7 @@ contains
     class(pieceConstantField), intent(inout) :: self
     class(dictionary), intent(in)            :: dict
     character(pathLen)                       :: path
-    class(dictionary), pointer               :: tempDict
+    type(dictionary)                         :: tempDict
 
     if (dict % isPresent('path')) then
       call dict % get(path, 'path')

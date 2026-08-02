@@ -86,8 +86,8 @@ module ceNeutronDatabase_inter
     !!
     !! Return energy bounds for data in the database
     !!
-    !! eMin and eMax are minimun and maximumum energy such that data
-    !! for ALL nuclides if avalible
+    !! eMin and eMax are minimum and maximumum energy such that data
+    !! for ALL nuclides is available
     !!
     !! Args:
     !!   eMin [out] -> minimum value of energy [MeV]
@@ -477,7 +477,7 @@ contains
 
     ! Check dynamic type of the particle
     if (p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+      call fatalError(Here, 'Dynamic type of the particle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check Cache and update if needed
@@ -514,6 +514,5 @@ contains
     end select
 
   end function ceNeutronDatabase_CptrCast
-
 
 end module ceNeutronDatabase_inter

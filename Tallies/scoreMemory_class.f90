@@ -66,6 +66,8 @@ module scoreMemory_class
   !!
   !!     reduceBins(): Move the scores from parallelBins and different processes to bins.
   !!
+  !!     reset(): Resets the memory: zeros all scores and reverts cycles/batches to 0.
+  !!
   !! Example use case:
   !!
   !!  do batches=1,20
@@ -112,6 +114,7 @@ module scoreMemory_class
     procedure :: getBatchSize
     procedure :: reduceBins
     procedure :: collectDistributed
+    procedure :: reset
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -618,5 +621,18 @@ contains
     end if
 
   end function getScore
+
+  !!
+  !! Resets score memory to having no scores, cycles, or batches
+  !!
+  subroutine reset(self)
+    class(scoreMemory), intent(inout) :: self
+
+    self % bins = ZERO
+    self % parallelBins = ZERO
+    self % batchN = 0
+    self % cycles = 0
+
+  end subroutine reset
 
 end module scoreMemory_class
