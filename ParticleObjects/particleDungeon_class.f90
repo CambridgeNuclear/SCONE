@@ -525,7 +525,7 @@ contains
 
     ! Determine the maximum brood ID and sort the dungeon for OMP reproducibility
     maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
-    call self % sortByBroodID(maxbroodID)
+    call self % sortByBroodID(maxBroodID)
 
     ! Get MPI world size and allocate rng seed vector, needed by all processes
     nRanks = getMPIWorldSize()
@@ -945,6 +945,11 @@ contains
       newPrisoners(i) = self % prisoners(j)    ! Add to new array
       newPrisoners(i) % wgt = wAv              ! Update weight
     end do
+    
+    ! Replace IFP info
+    if (self % hasIFPData()) then
+      call self % replaceIFP(newIdxs)
+    end if
 
     ! Re-size the dungeon to new size
     call self % setSize(N)
@@ -956,11 +961,6 @@ contains
     end do
     !$omp end parallel do
       
-    ! Also replace IFP info
-    if (self % hasIFPData()) then
-      call self % replaceIFP(newIdxs)
-    end if
-
   end subroutine combing
 
   !!
@@ -1028,6 +1028,11 @@ contains
       newPrecursors(i) = self % prisoners(j)       ! Add to new array
       newPrecursors(i) % wgt = uAv / expFactors(j) ! Update weight from timed weight
     end do
+    
+    ! Replace IFP info
+    if (self % hasIFPData()) then
+      call self % replaceIFP(newIdxs)
+    end if
 
     ! Re-size the dungeon to new size
     call self % setSize(N)
@@ -1039,11 +1044,6 @@ contains
     end do
     !$omp end parallel do
     
-    ! Also replace IFP info
-    if (self % hasIFPData()) then
-      call self % replaceIFP(newIdxs)
-    end if
-
   end subroutine precursorCombing
 
   !!
@@ -1204,11 +1204,6 @@ contains
 
     ! Set known (default) state to all particles
     call self % prisoners % kill()
-
-    ! Reset ancestry information
-    if (self % hasIFPData()) then
-      call self % setSizeAncestry(n)
-    end if
 
   end subroutine setSize
 
