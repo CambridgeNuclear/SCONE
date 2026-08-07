@@ -311,7 +311,7 @@ contains
     type(neutronMicroXSs)                :: microXSs
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir, val
-    integer(shortInt)                    :: n, i
+    integer(shortInt)                    :: n, i, group
     real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
                                             sig_scatter, totalElastic, kT
@@ -361,7 +361,7 @@ contains
       r   = p % rGlobal()
 
       do i = 1, n
-        call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
+        call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda, group)
 
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
@@ -385,6 +385,7 @@ contains
         pTemp % E   = E_out
         pTemp % wgt = wgt
         pTemp % collisionN = 0
+        pTemp % precGroup = group
 
         ! If storing precursors, do so when a finite lambda occurs
         if (self % makePrec .and. lambda < huge(lambda)) then
@@ -393,7 +394,7 @@ contains
 
         end if
 
-        call nextCycle % detain(pTemp)
+        call nextCycle % detain(pTemp, p % getIFPInfo())
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
 
         ! Report birth of new particle
@@ -454,7 +455,7 @@ contains
     type(fissionCE), pointer             :: fiss
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir, val
-    integer(shortInt)                    :: n, i
+    integer(shortInt)                    :: n, i, group
     real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
     real(defReal)                        :: sig_nufiss, sig_fiss, k_eff, kT, wD
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
@@ -500,7 +501,7 @@ contains
       r   = p % rGlobal()
 
       do i = 1, n
-        call fiss % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
+        call fiss % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda, group)
 
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
@@ -524,6 +525,7 @@ contains
         pTemp % E   = E_out
         pTemp % wgt = wgt * wD
         pTemp % collisionN = 0
+        pTemp % precGroup = group
 
         ! If storing precursors, do so when a finite lambda occurs
         if (self % makePrec .and. lambda < huge(lambda)) then
@@ -532,7 +534,7 @@ contains
 
         end if
 
-        call nextCycle % detain(pTemp)
+        call nextCycle % detain(pTemp, p % getIFPInfo())
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
 
         ! Report birth of new particle

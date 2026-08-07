@@ -131,12 +131,13 @@ module uncorrelatedReactionCE_inter
     !!   E_in [in]    -> incident particle energy [MeV]
     !!   rand [inout] -> Random number generator for samples
     !!   lambda [out] -> Optional. Delay rate of the emission [1/s]
+    !!   group [out]  -> Optional. Delay group of emission. Mainly for fission.
     !!
     !! Errors:
     !!   If E_in is out of bounds or invalid (e.g.-ve) fatalError is returned
     !!
-    subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
-      import :: defReal, uncorrelatedReactionCE, RNG
+    subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda, group)
+      import :: defReal, shortInt, uncorrelatedReactionCE, RNG
       class(uncorrelatedReactionCE), intent(in) :: self
       real(defReal), intent(out)                :: mu
       real(defReal), intent(out)                :: phi
@@ -144,6 +145,7 @@ module uncorrelatedReactionCE_inter
       real(defReal), intent(in)                 :: E_in
       class(RNG), intent(inout)                 :: rand
       real(defReal), intent(out),optional       :: lambda
+      integer(shortInt), intent(out), optional  :: group
     end subroutine sampleOut
 
     !!

@@ -194,7 +194,7 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda, group)
     class(neutronScatter), intent(in) :: self
     real(defReal), intent(out)               :: mu
     real(defReal), intent(out)               :: phi
@@ -202,6 +202,7 @@ contains
     real(defReal), intent(in)                :: E_in
     class(RNG), intent(inout)                :: rand
     real(defReal), intent(out), optional     :: lambda
+    integer(shortInt), intent(out), optional :: group
 
     ! Sample energy an angle
     if (self % correlated) then
@@ -220,8 +221,9 @@ contains
     ! Sample phi
     phi = rand % get() * TWO_PI
 
-    ! Only prompt particles. Set delay
+    ! Only prompt particles. Set delay and group
     if (present(lambda)) lambda = huge(lambda)
+    if (present(group)) group = 0
 
   end subroutine sampleOut
 

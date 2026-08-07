@@ -104,6 +104,7 @@ module alphaPhysicsPackage_class
     real(defReal)      :: eta
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
+    integer(shortInt)  :: sizeIFP = 0
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -250,6 +251,7 @@ contains
       end do gen
       !$omp end parallel do
 
+      call self % nextCycle % updateAncestry(self % thisCycle)
       call self % thisCycle % cleanPop()
 
       ! Update RNG
@@ -345,8 +347,8 @@ contains
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
-    call self % thisCycle % init(2 * self % pop)
-    call self % nextCycle % init(2 * self % pop)
+    call self % thisCycle % init(2 * self % pop, self % sizeIFP)
+    call self % nextCycle % init(2 * self % pop, self % sizeIFP)
 
     ! Generate initial source
     print *, "GENERATING INITIAL SOURCE"
@@ -432,6 +434,9 @@ contains
     call dict % get( self % N_active,'active')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
+    
+    ! Read iterated fission probability generation size
+    call dict % getOrDefault(self % sizeIFP, 'sizeIFP', 0)
 
     ! Parallel buffer size
     call dict % getOrDefault( self % bufferSize, 'buffer', 1000)

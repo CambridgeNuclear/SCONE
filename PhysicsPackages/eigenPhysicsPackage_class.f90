@@ -107,6 +107,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
     logical(defBool)   :: reproducible = .true.
+    integer(shortInt)  :: sizeIFP = 0
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -251,6 +252,7 @@ contains
       end do gen
       !$omp end parallel do
 
+      call self % nextCycle % updateAncestry(self % thisCycle)
       call self % thisCycle % cleanPop()
 
       ! Update RNG
@@ -352,8 +354,8 @@ contains
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
-    call self % thisCycle % init(2 * self % pop)
-    call self % nextCycle % init(2 * self % pop)
+    call self % thisCycle % init(2 * self % pop, self % sizeIFP)
+    call self % nextCycle % init(2 * self % pop, self % sizeIFP)
 
     ! Generate initial source
     call statusMsg("GENERATING INITIAL FISSION SOURCE")
@@ -442,6 +444,9 @@ contains
     call dict % get( self % N_active,'active')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
+
+    ! Read iterated fission probability generation size
+    call dict % getOrDefault(self % sizeIFP, 'sizeIFP', 0)
 
     ! Check if the calculation has to be reproducible with MPI
     call dict % getOrDefault(self % reproducible, 'reproducible', .true.)

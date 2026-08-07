@@ -25,6 +25,18 @@ module particle_class
   public :: printType
 
   !!
+  !! Small object to transmit info relevant to IFP calculations.
+  !! Intend to contain a parent particle's weight, lifetime, and
+  !! precursor group, and to be optionally transmitted to a dungeon 
+  !! when adding a child particle.
+  !!
+  type, public :: infoIFP
+    real(defReal)     :: weight = ZERO
+    real(defReal)     :: lifetime = ZERO
+    integer(shortInt) :: precGroup = 0
+  end type infoIFP
+
+  !!
   !! Particle compressed for storage
   !!
   !! particleStateData contains only the properties (useful for MPI); it is extended into
@@ -46,6 +58,7 @@ module particle_class
   !!   broodID  -> ID of the source particle. It is used to indicate the primogenitor of the particles
   !!               in the particleDungeon so they can be sorted, which is necessary for reproducibility
   !!               with OpenMP
+  !!   precGroup -> precursor group from which the particle was born
   !!
   type, public :: particleStateData
     real(defReal)              :: wgt  = ZERO       ! Particle weight
@@ -62,6 +75,8 @@ module particle_class
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
     integer(shortInt)          :: broodID = 0       ! ID of the source particle
+    integer(shortInt)          :: precGroup = 0     ! Precursor group from which particle was born
+    
   end type particleStateData
 
   !!
@@ -116,7 +131,7 @@ module particle_class
     real(defReal)              :: rho = NO_DENSITY   ! Local density scaling
 
     ! Precursor particle data
-    real(defReal)              :: lambda = INF     ! Precursor decay constant
+    real(defReal)              :: lambda = INF   ! Precursor decay constant
     
     ! Particle flags
     real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
@@ -127,6 +142,7 @@ module particle_class
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
     integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
+    integer(shortInt)          :: precGroup = 0  ! Precursor group from which particle was born
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()   ! Pointer to RNG associated with the particle
@@ -157,6 +173,8 @@ module particle_class
     procedure                  :: getUniIdx
     procedure                  :: matIdx
     procedure, non_overridable :: getType
+    procedure                  :: getLifetime
+    procedure                  :: getIFPInfo
 
     ! Enquiry about physical state
     procedure :: getSpeed
@@ -306,6 +324,7 @@ contains
     LHS % collisionN            = RHS % collisionN
     LHS % splitCount            = 0 ! Reinitialise counter for number of splits
     LHS % broodID               = RHS % broodID
+    LHS % precGroup             = RHS % precGroup
 
   end subroutine particle_fromParticleState
 
@@ -435,7 +454,7 @@ contains
   end function matIdx
 
   !!
-  !! Return one of the particle Tpes defined in universal variables
+  !! Return one of the particle types defined in universal variables
   !!
   !! Args:
   !!   None
@@ -457,6 +476,26 @@ contains
     end if
 
   end function getType
+
+  !!
+  !! Return the age of the particle
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   lifetime
+  !!
+  !! Errors:
+  !!   None
+  !!
+  pure function getLifetime(self) result(lifetime)
+    class(particle), intent(in) :: self
+    real(defReal)               :: lifetime
+
+    lifetime = self % time - self % preHistory % time
+
+  end function getLifetime
 
   !!
   !! Return the particle speed in [cm/s]
@@ -517,6 +556,19 @@ contains
     xs = (max(alpha, ZERO) + eta * max(-alpha, ZERO)) / self % getSpeed()
 
   end function getAlphaAbsorption
+
+  !!
+  !! Return info relevant for iterated fission probability
+  !!
+  pure function getIFPInfo(self) result(ifpData)
+    class(particle), intent(in) :: self
+    type(infoIFP)               :: ifpData
+
+    ifpData % weight = self % w
+    ifpData % precGroup = self % precGroup
+    ifpData % lifetime = self % getLifetime()
+
+  end function getIFPInfo
 
   !!
   !! Produce a delayed neutron from a precursor.
@@ -830,6 +882,7 @@ contains
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
     LHS % broodID    = RHS % broodID
+    LHS % precGroup  = RHS % precGroup
 
   end subroutine particleState_fromParticle
 
@@ -848,6 +901,7 @@ contains
     LHS % isMG = RHS % isMG
     LHS % type = RHS % type
     LHS % time = RHS % time
+    LHS % lambda = RHS % lambda
 
     ! Save all indexes
     LHS % matIdx   = RHS % matIdx
@@ -855,12 +909,13 @@ contains
     LHS % cellIdx  = RHS % cellIdx
     LHS % collisionN = RHS % collisionN
     LHS % broodID    = RHS % broodID
+    LHS % precGroup  = RHS % precGroup
 
   end subroutine particleState_fromParticleStateData
 
   !!
   !! Define equal operation on phase coordinates
-  !!  Phase coords are equal if all their components are the same
+  !! Phase coords are equal if all their components are the same
   !!
   function equal_particleState(LHS,RHS) result(isEqual)
     class(particleState), intent(in) :: LHS
@@ -879,12 +934,14 @@ contains
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
     isEqual = isEqual .and. LHS % broodID    == RHS % broodID
+    isEqual = isEqual .and. LHS % precGroup  == RHS % precGroup
 
-    if( LHS % isMG ) then
+    if(LHS % isMG) then
       isEqual = isEqual .and. LHS % G == RHS % G
     else
       isEqual = isEqual .and. LHS % E == RHS % E
     end if
+
   end function equal_particleState
 
   !!
@@ -900,6 +957,9 @@ contains
     print*, 'isMG: ', self % isMG
     print*, 'Weight: ', self % wgt
     print*, 'Time: ', self % time
+    print*, 'Precursor group: ', self % precGroup
+    print*, 'Precursor decay constant: ', self % lambda
+    print*, 'Brood ID: ', self % broodID
 
   end subroutine display_particleState
 
@@ -922,9 +982,10 @@ contains
     self % uniqueID = -1
     self % collisionN = 0
     self % broodID    = 0
+    self % precGroup  = 0
+    self % lambda = INF
 
   end subroutine kill_particleState
-
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Misc Procedures

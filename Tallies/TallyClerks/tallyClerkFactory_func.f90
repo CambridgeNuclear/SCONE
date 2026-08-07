@@ -20,6 +20,7 @@ module tallyClerkFactory_func
   use eventClerk_class,                only : eventClerk
   use kAlphaAnalogClerk_class,         only : kAlphaAnalogClerk
   use removalTimeClerk_class,          only : removalTimeClerk
+  use kineticIFPClerk_class,           only : kineticIFPClerk
   use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
@@ -43,6 +44,7 @@ module tallyClerkFactory_func
                                                                         'dancoffBellClerk         ',&
                                                                         'kAlphaAnalogClerk        ',&
                                                                         'removalTimeClerk         ',&
+                                                                        'kineticIFPClerk          ',&
                                                                         'mgXsClerk                ']
 
 contains
@@ -104,6 +106,9 @@ contains
 
      case('mgXsClerk')
        allocate(mgXsClerk :: new)
+
+     case('kineticIFPClerk')
+       allocate(kineticIFPClerk :: new)
 
       case default
         print *, AVALIBLE_tallyClerks

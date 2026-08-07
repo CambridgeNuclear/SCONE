@@ -3,7 +3,7 @@ module particleDungeon_class
   use numPrecision
   use errors_mod,            only : fatalError
   use genericProcedures,     only : numToChar, swap
-  use particle_class,        only : particle, particleStateData, particleState
+  use particle_class,        only : particle, particleStateData, particleState, infoIFP
   use RNG_class,             only : RNG
   use heapQueue_class,       only : heapQueue
 
@@ -25,6 +25,9 @@ module particleDungeon_class
   !! Similar structures are referred to as:
   !! Store: MONK and Serpent(?)
   !! Fission Bank: OpenMC and MCNP(?)
+  !!
+  !! Also optionally stores particle ancestry information to be used for iterated fission probability
+  !! calculations, e.g., of kinetic parameters.
   !!
   !! NOTE INCONSISTENT DEFINITIONS
   !! ****
@@ -65,18 +68,24 @@ module particleDungeon_class
   !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
   !!     setTime(t)        -> sets all particles to being at the same point in time
   !!     printToFile(name) -> prints population in ASCII format to file "name"
+  !!     updateAncestry    -> updates ancestor info from a previous cycle dungeon
   !!
   !!   Build procedures:
-  !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
-  !!     kill()            -> return to uninitialised state
+  !!     init(maxSize, sizeIFP) -> allocate space to store maximum of maxSize particles.
+  !!                               Optionally also allocate storage for IFP info.
+  !!     kill()                 -> return to uninitialised state
   !!
   type, public :: particleDungeon
     private
     real(defReal), public :: k_eff = ONE ! k-eff for fission site generation rate normalisation
     integer(shortInt)     :: pop = 0     ! Current population size of the dungeon
+    integer(shortInt)     :: sizeIFP = 0 ! Number of generations of info stored for IFP calculations
 
     ! Storage space
     type(particleState), dimension(:), allocatable, public :: prisoners
+    real(defReal), dimension(:), allocatable, public       :: ancestorLifetimes
+    real(defReal), dimension(:), allocatable, public       :: ancestorWeights
+    integer(shortInt), dimension(:), allocatable, public   :: ancestorDelayedGroups
 
   contains
     !! Build procedures
@@ -107,6 +116,11 @@ module particleDungeon_class
     procedure  :: setSize
     procedure  :: printToFile
     procedure  :: sortByBroodID
+    
+    ! IFP-related data
+    procedure  :: hasIFPData
+    procedure  :: updateAncestry
+    procedure  :: getIFPValues
 
     !! Precursor procedures
     procedure  :: precursorCombing
@@ -119,6 +133,12 @@ module particleDungeon_class
     procedure, private :: replace_particle
     procedure, private :: replace_particleState
     procedure, private :: loadBalancing
+    
+    ! Private procedures for IFP
+    procedure, private :: replaceIFP
+    procedure, private :: setSizeAncestry
+    procedure, private :: loadBalanceIFPSend
+    procedure, private :: loadBalanceIFPReceive
 
   end type particleDungeon
 
@@ -127,13 +147,29 @@ contains
   !!
   !! Allocate space for the particles
   !!
-  subroutine init(self,maxSize)
-    class(particleDungeon), intent(inout) :: self
-    integer(shortInt), intent(in)         :: maxSize
+  subroutine init(self, maxSize, sizeIFP)
+    class(particleDungeon), intent(inout)   :: self
+    integer(shortInt), intent(in)           :: maxSize
+    integer(shortInt), intent(in), optional :: sizeIFP
 
     if (allocated(self % prisoners)) deallocate(self % prisoners)
     allocate(self % prisoners(maxSize))
     self % pop    = 0
+
+    if (present(sizeIFP)) then
+      if (sizeIFP > 0) then
+        self % sizeIFP = sizeIFP
+        if (allocated(self % ancestorWeights)) deallocate(self % ancestorWeights)
+        if (allocated(self % ancestorLifetimes)) deallocate(self % ancestorLifetimes)
+        if (allocated(self % ancestorDelayedGroups)) deallocate(self % ancestorDelayedGroups)
+        allocate(self % ancestorWeights(sizeIFP * maxSize))
+        allocate(self % ancestorLifetimes(sizeIFP * maxSize))
+        allocate(self % ancestorDelayedGroups(sizeIFP * maxSize))
+        self % ancestorWeights = ZERO
+        self % ancestorLifetimes = ZERO
+        self % ancestorDelayedGroups = 0
+      end if
+    end if
 
   end subroutine init
 
@@ -145,19 +181,24 @@ contains
 
     ! Reset settings
     self % pop = 0
+    self % sizeIFP = 0
 
     ! Deallocate memeory
     if (allocated(self % prisoners)) deallocate(self % prisoners)
+    if (allocated(self % ancestorWeights)) deallocate(self % ancestorWeights)
+    if (allocated(self % ancestorLifetimes)) deallocate(self % ancestorLifetimes)
+    if (allocated(self % ancestorDelayedGroups)) deallocate(self % ancestorDelayedGroups)
 
   end subroutine kill
 
   !!
   !! Store particle in the dungeon
   !!
-  subroutine detain_particle(self,p)
+  subroutine detain_particle(self, p, ifpData)
     class(particleDungeon), intent(inout) :: self
     class(particle), intent(in)           :: p
-    integer(shortInt)                     :: pop
+    type(infoIFP), intent(in), optional   :: ifpData
+    integer(shortInt)                     :: pop, idx
     character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
     !$omp atomic capture
@@ -176,15 +217,24 @@ contains
     ! Load new particle
     self % prisoners(pop) = p
 
+    ! Load IFP data
+    if (present(ifpData) .and. self % hasIFPData()) then
+      idx = (pop - 1) * self % sizeIFP + 1
+      self % ancestorWeights(idx) = ifpData % weight
+      self % ancestorLifetimes(idx) = ifpData % lifetime
+      self % ancestorDelayedGroups(idx) = ifpData % precGroup
+    end if
+
   end subroutine detain_particle
 
   !!
   !! Store particle in the dungeon with a critical operation
   !!
-  subroutine detainCritical_particle(self,p)
+  subroutine detainCritical_particle(self, p, ifpData)
     class(particleDungeon), intent(inout) :: self
     class(particle), intent(in)           :: p
-    integer(shortInt)                     :: pop
+    type(infoIFP), intent(in), optional   :: ifpData
+    integer(shortInt)                     :: pop, idx
     character(100),parameter              :: Here = 'detainCritical_particle (particleDungeon_class.f90)'
 
     !$omp critical (dungeon)
@@ -201,6 +251,14 @@ contains
 
     ! Load new particle
     self % prisoners(pop) = p
+    
+    ! Load IFP data
+    if (present(ifpData) .and. self % hasIFPData()) then
+      idx = (pop - 1) * self % sizeIFP + 1
+      self % ancestorWeights(idx) = ifpData % weight
+      self % ancestorLifetimes(idx) = ifpData % lifetime
+      self % ancestorDelayedGroups(idx) = ifpData % precGroup
+    end if
     !$omp end critical (dungeon)
 
   end subroutine detainCritical_particle
@@ -208,10 +266,11 @@ contains
   !!
   !! Store phaseCoord in the dungeon
   !!
-  subroutine detain_particleState(self,p_state)
+  subroutine detain_particleState(self, p_state, ifpData)
     class(particleDungeon), intent(inout) :: self
     type(particleState), intent(in)       :: p_state
-    integer(shortInt)                     :: pop
+    type(infoIFP), intent(in), optional   :: ifpData
+    integer(shortInt)                     :: pop, idx
     character(100), parameter    :: Here = 'detain_particleState (particleDungeon_class.f90)'
 
     ! Increase population
@@ -230,15 +289,24 @@ contains
     ! Load new particle
     self % prisoners(pop) = p_state
 
+    ! Load IFP data
+    if (present(ifpData) .and. self % hasIFPData()) then
+      idx = (pop - 1) * self % sizeIFP + 1
+      self % ancestorWeights(idx) = ifpData % weight
+      self % ancestorLifetimes(idx) = ifpData % lifetime
+      self % ancestorDelayedGroups(idx) = ifpData % precGroup
+    end if
+
   end subroutine detain_particleState
 
   !!
   !! Store phaseCoord in the dungeon with a critical operation
   !!
-  subroutine detainCritical_particleState(self,p_state)
+  subroutine detainCritical_particleState(self, p_state, ifpData)
     class(particleDungeon), intent(inout) :: self
     type(particleState), intent(in)       :: p_state
-    integer(shortInt)                     :: pop
+    type(infoIFP), intent(in), optional   :: ifpData
+    integer(shortInt)                     :: pop, idx
     character(100), parameter    :: Here = 'detainCritical_particleState (particleDungeon_class.f90)'
 
     ! Increase population
@@ -255,6 +323,14 @@ contains
 
     ! Load new particle
     self % prisoners(pop) = p_state
+
+    ! Load IFP data
+    if (present(ifpData) .and. self % hasIFPData()) then
+      idx = (pop - 1) * self % sizeIFP + 1
+      self % ancestorWeights(idx) = ifpData % weight
+      self % ancestorLifetimes(idx) = ifpData % lifetime
+      self % ancestorDelayedGroups(idx) = ifpData % precGroup
+    end if
     !$omp end critical (dungeon)
 
   end subroutine detainCritical_particleState
@@ -341,6 +417,7 @@ contains
     self % prisoners(idx) = p
 
   end subroutine replace_particleState
+
 
   !!
   !! Copy particle from a location inside the dungeon
@@ -546,6 +623,11 @@ contains
         if (i /= keepers(i)) self % prisoners(i) = self % prisoners(keepers(i))
       end do
 
+      ! Update IFP data
+      if (self % hasIFPData()) then
+        call self % replaceIFP(keepers(1:count))
+      end if
+
       ! Update population number
       self % pop = count
 
@@ -555,10 +637,16 @@ contains
       totSites     = excess + totPop
       n_copies     = -excess / totSites
       n_duplicates = modulo(-excess, totSites)
+      
+      ! Keepers array only used here for permuting IFP data
+      allocate(keepers(totPop))
+      keepers = 0
+      keepers(1:self % pop) = [(j, j = 1, self % pop)]
 
       ! Copy all the particles the number of times needed
       do i = 1, n_copies
         self % prisoners(self % pop * i + 1 : self % pop * (i + 1)) = self % prisoners(1:self % pop)
+        keepers(self % pop * i + 1 : self % pop * (i + 1)) = [(j, j = 1, self % pop)]
       end do
 
       ! Loop over population to duplicate from
@@ -571,9 +659,15 @@ contains
           if (rankRand % get() <= threshold) then
             count = count + 1
             self % prisoners(count) = self % prisoners(i)
+            keepers(count) = i
           end if
         end do
 
+      end if
+
+      ! Update IFP data
+      if (self % hasIFPData()) then
+        call self % replaceIFP(keepers)
       end if
 
       ! Update population number
@@ -581,7 +675,7 @@ contains
 
       ! Determine the maximum brood ID and sort the dungeon again for MPI reproducibility
       maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
-      call self % sortByBroodID(maxbroodID)
+      call self % sortByBroodID(maxBroodID)
 
     end if
 
@@ -645,6 +739,12 @@ contains
       ! Send particles from the end of the dungeon to the rank above
       dataBuffer = self % prisoners(self % pop - excess + 1 : self % pop)
       call mpi_send(dataBuffer, excess, MPI_PARTICLE_STATE, rank + 1, rank, MPI_COMM_WORLD, error)
+
+      ! Likewise send IFP info
+      if (self % hasIFPData()) then
+        call self % loadBalanceIFPSend(excess, rank + 1, rank, .false.)
+      end if
+
       self % pop = self % pop - excess
 
     elseif (excess < 0) then
@@ -658,6 +758,12 @@ contains
         stateBuffer(i) = dataBuffer(i)
       end do
       self % prisoners(self % pop + 1 : self % pop + excess) = stateBuffer
+
+      ! Likewise receive IFP info
+      if (self % hasIFPData()) then
+        call self % loadBalanceIFPReceive(excess, rank + 1, rank + 1, .false.)
+      end if
+
       self % pop = self % pop + excess
 
     end if
@@ -677,6 +783,12 @@ contains
 
       ! Move the remaining particles to the beginning of the dungeon
       self % prisoners(1 : self % pop - excess) = self % prisoners(excess + 1 : self % pop)
+      
+      ! Likewise send IFP info
+      if (self % hasIFPData()) then
+        call self % loadBalanceIFPSend(excess, rank - 1, rank, .true.)
+      end if
+      
       self % pop = self % pop - excess
 
     elseif (excess > 0) then
@@ -690,6 +802,12 @@ contains
       end do
       self % prisoners(excess + 1 : self % pop + excess) = self % prisoners(1 : self % pop)
       self % prisoners(1 : excess) = stateBuffer
+      
+      ! Likewise receive IFP info
+      if (self % hasIFPData()) then
+        call self % loadBalanceIFPReceive(excess, rank - 1, rank - 1, .true.)
+      end if
+
       self % pop = self % pop + excess
 
     end if
@@ -788,13 +906,14 @@ contains
     real(defReal)                         :: tooth0, wAv
     real(defReal)                         :: nextTooth, curWeight
     type(particleState), dimension(N)     :: newPrisoners
+    integer(shortInt), dimension(N)       :: newIdxs
     character(100), parameter :: Here =' combing (particleDungeon_class.f90)'
 
     ! Protect against invalid N
-    if( N > size(self % prisoners)) then
+    if(N > size(self % prisoners)) then
       call fatalError(Here,'Requested size: '//numToChar(N) //&
                            'is greater then max size: '//numToChar(size(self % prisoners)))
-    else if ( N <= 0 ) then
+    else if (N <= 0) then
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
 
@@ -822,6 +941,7 @@ contains
       end do
 
       ! When a particle has been found
+      newIdxs(i) = j
       newPrisoners(i) = self % prisoners(j)    ! Add to new array
       newPrisoners(i) % wgt = wAv              ! Update weight
     end do
@@ -835,6 +955,11 @@ contains
       call self % replace(newPrisoners(i), i)
     end do
     !$omp end parallel do
+      
+    ! Also replace IFP info
+    if (self % hasIFPData()) then
+      call self % replaceIFP(newIdxs)
+    end if
 
   end subroutine combing
 
@@ -855,6 +980,7 @@ contains
     type(particle), save                     :: p
     integer(shortInt)                        :: i, j
     type(particleState), dimension(N)        :: newPrecursors
+    integer(shortInt), dimension(N)          :: newIdxs
     real(defReal), dimension(self % pop)     :: expDelayedWgts, expFactors
     real(defReal)                            :: uAv, tooth0
     real(defReal)                            :: nextTooth, curExpDelayedWgt
@@ -898,6 +1024,7 @@ contains
       end do
 
       ! When a particle has been found...
+      newIdxs(i) = j
       newPrecursors(i) = self % prisoners(j)       ! Add to new array
       newPrecursors(i) % wgt = uAv / expFactors(j) ! Update weight from timed weight
     end do
@@ -908,9 +1035,14 @@ contains
     ! Replace the particle at each index with the new particles
     !$omp parallel do
     do i = 1, N
-      call self % replace_particleState(newPrecursors(i), i)
+      call self % replace(newPrecursors(i), i)
     end do
     !$omp end parallel do
+    
+    ! Also replace IFP info
+    if (self % hasIFPData()) then
+      call self % replaceIFP(newIdxs)
+    end if
 
   end subroutine precursorCombing
 
@@ -956,6 +1088,11 @@ contains
       count(id) = count(id) + 1
       perm(loc) = i
     end do
+    
+    ! Permute IFP data if present
+    if (self % hasIFPData()) then
+      call self % replaceIFP(perm)
+    end if
 
     ! Permute particles
     do i = 1, self % pop
@@ -1001,7 +1138,7 @@ contains
   end subroutine setTime
 
   !!
-  !! Kill or particles in the dungeon
+  !! Kill all particles in the dungeon
   !!
   pure subroutine cleanPop(self)
     class(particleDungeon), intent(inout) :: self
@@ -1068,6 +1205,11 @@ contains
     ! Set known (default) state to all particles
     call self % prisoners % kill()
 
+    ! Reset ancestry information
+    if (self % hasIFPData()) then
+      call self % setSizeAncestry(n)
+    end if
+
   end subroutine setSize
 
   !!
@@ -1110,5 +1252,329 @@ contains
     close(id)
 
   end subroutine printToFile
+
+!!
+!! IFP related procedures
+!!
+
+  !!
+  !! Check on whether the dungeon contains IFP data
+  !!
+  pure function hasIFPData(self) result(hasData)
+    class(particleDungeon), intent(in) :: self
+    logical(defBool)                   :: hasData
+
+    hasData = self % sizeIFP > 0
+
+  end function hasIFPData
+
+  !!
+  !! Updates the ancestry information for particles in the dungeon,
+  !! extracting the relevant information from the previous cycle dungeon.
+  !!
+  subroutine updateAncestry(self, prevDungeon)
+    class(particleDungeon), intent(inout) :: self
+    type(particleDungeon), intent(in)     :: prevDungeon
+    integer(shortInt)                     :: i
+    integer(shortInt), save               :: idx, idxNew1, idxNew2, idxOld1, idxOld2
+    !$omp threadprivate(idx, idxNew1, idxNew2, idxOld1, idxOld2)
+
+    ! Skip if not doing IFP
+    if (.not. self % hasIFPData()) return
+
+    ! Copy information from the prevous dungeon based on
+    ! the broodID of the particles currently stored
+    !$omp parallel do
+    do i = 1, self % pop
+      idx = self % prisoners(i) % broodID
+      idxNew1 = (i - 1) * self % sizeIFP + 2
+      idxNew2 = i * self % sizeIFP
+      idxOld1 = (idx - 1) * self % sizeIFP + 1
+      idxOld2 = idx * self % sizeIFP - 1
+      self % ancestorWeights(idxNew1:idxNew2) = &
+              prevDungeon % ancestorWeights(idxOld1:idxOld2)
+      self % ancestorLifetimes(idxNew1:idxNew2) = &
+              prevDungeon % ancestorLifetimes(idxOld1:idxOld2)
+      self % ancestorDelayedGroups(idxNew1:idxNew2) = &
+              prevDungeon % ancestorDelayedGroups(idxOld1:idxOld2)
+
+    end do
+    !$omp end parallel do
+
+  end subroutine updateAncestry
+  
+  !!
+  !! Produces the IFP-weighted average lifetime, beta, and
+  !! groupwise beta values. Requires an input number of
+  !! precursor groups.
+  !!
+  subroutine getIFPValues(self, nPrec, life, beta, betaG)
+    class(particleDungeon), intent(in)           :: self
+    integer(shortInt), intent(in)                :: nPrec
+    real(defReal), intent(out)                   :: life
+    real(defReal), intent(out)                   :: beta
+    real(defReal), dimension(nPrec), intent(out) :: betaG
+    integer(shortInt)                            :: i, j, g, idx1, idx2
+    real(defReal)                                :: lifeTemp, totWeight
+    real(defReal), dimension(nPrec)              :: betaGTemp
+    
+    life = ZERO
+    beta = ZERO
+    betaG = ZERO
+    if (.not. self % hasIFPData()) return
+
+    ! Average over the population
+    do i = 1, self % pop
+      idx1 = (i - 1) * self % sizeIFP + 1
+      idx2 = i * self % sizeIFP
+      totWeight = sum(self % ancestorWeights(idx1:idx2))
+
+      lifeTemp = dot_product(self % ancestorWeights(idx1:idx2),&
+              self % ancestorLifetimes(idx1:idx2))
+      lifeTemp = lifeTemp / totWeight
+      life = life + lifeTemp
+
+      betaGTemp = ZERO
+      do j = idx1, idx2
+        g = self % ancestorDelayedGroups(j)
+
+        if (g > 0) then
+          betaGTemp(g) = betaGTemp(g) + self % ancestorWeights(j)
+        end if
+
+      end do
+
+      betaGTemp = betaGTemp / totWeight
+      betaG = betaG + betaGTemp
+
+    end do
+
+    life = life / self % pop
+    betaG = betaG / self % pop
+    beta = sum(betaG)
+
+  end subroutine getIFPValues
+
+  !!
+  !! Replace IFP data of prisoners from the idxs provided
+  !!
+  subroutine replaceIFP(self, idxArray)
+    class(particleDungeon), intent(inout)        :: self
+    integer(shortInt), dimension(:), intent(in)  :: idxArray
+    real(defReal), dimension(:), allocatable     :: tempWeights
+    real(defReal), dimension(:), allocatable     :: tempLifetimes
+    integer(shortInt), dimension(:), allocatable :: tempGroups
+    integer(shortInt)                            :: i, n 
+    integer(shortInt), save                      :: idx1, idx2, idxOld1, idxOld2
+    character(100),parameter :: Here = 'replaceIFP (particleDungeon_class.f90)'
+    !$omp threadprivate(idx1, idx2, idxOld1, idxOld2)
+
+    ! Protect against out-of-bounds access
+    if (any(idxArray <= 0) .or. any(idxArray > self % pop)) then
+      call fatalError(Here,'Out of bounds access. Population is: '//&
+              numToChar(self % pop)//'. Max idx is: '//numToChar(maxval(idxArray))//&
+              '. Min idx is: '//numToChar(minval(idxArray))//'.')
+    end if
+
+    n = size(idxArray)
+
+    allocate(tempWeights(n * self % sizeIFP))
+    allocate(tempLifetimes(n * self % sizeIFP))
+    allocate(tempGroups(n * self % sizeIFP))
+
+    !$omp parallel do
+    do i = 1, n
+
+      idx1 = (i - 1) * self % sizeIFP + 1
+      idx2 = i * self % sizeIFP
+      idxOld1 = (idxArray(i) - 1) * self % sizeIFP + 1
+      idxOld2 = idxArray(i) * self % sizeIFP
+      tempWeights(idx1:idx2) = self % ancestorWeights(idxOld1:idxOld2)
+      tempLifetimes(idx1:idx2) = self % ancestorLifetimes(idxOld1:idxOld2)
+      tempGroups(idx1:idx2) = self % ancestorDelayedGroups(idxOld1:idxOld2)
+
+    end do
+    !$omp end parallel do
+
+    self % ancestorWeights(1:size(tempWeights)) = tempWeights
+    self % ancestorLifetimes(1:size(tempLifetimes)) = tempLifetimes
+    self % ancestorDelayedGroups(1:size(tempGroups)) = tempGroups
+
+  end subroutine replaceIFP
+
+  !!
+  !! Resize IFP-related information and reset values.
+  !! Should only be called if sizeIFP > 0
+  !!
+  subroutine setSizeAncestry(self, n)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: n
+    character(100),parameter :: Here = 'setSizeAncestry (particleDungeon_class.f90)'
+      
+    if (n <= 0) call fatalError(Here, 'Requested population is not +ve: '//numToChar(n))
+    
+    if (allocated(self % ancestorWeights)) then
+      if (size(self % ancestorWeights) < n * self % sizeIFP) then
+        deallocate(self % ancestorWeights)
+        allocate(self % ancestorWeights(n * self % sizeIFP))
+      end if
+    end if
+    if (allocated(self % ancestorLifetimes)) then
+      if (size(self % ancestorLifetimes) < n * self % sizeIFP) then
+        deallocate(self % ancestorLifetimes)
+        allocate(self % ancestorLifetimes(n * self % sizeIFP))
+      end if
+    end if
+    if (allocated(self % ancestorDelayedGroups)) then
+      if (size(self % ancestorDelayedGroups) < n * self % sizeIFP) then
+        deallocate(self % ancestorDelayedGroups)
+        allocate(self % ancestorDelayedGroups(n * self % sizeIFP))
+      end if
+    end if
+    self % ancestorWeights = ZERO
+    self % ancestorLifetimes = ZERO
+    self % ancestorDelayedGroups = 0
+
+  end subroutine setSizeAncestry
+
+  !!
+  !! Perform load balancing on IFP information - send info to another rank
+  !!
+  subroutine loadBalanceIFPSend(self, excess, rank1, rank2, fromBeginning)
+    class(particleDungeon), intent(inout)        :: self
+    integer(shortInt), intent(in)                :: excess
+    integer(shortInt), intent(in)                :: rank1
+    integer(shortInt), intent(in)                :: rank2
+    logical(defBool), intent(in)                 :: fromBeginning
+    integer(shortInt)                            :: idx1, idx2, idx3, idx4, error
+    real(defReal), dimension(:), allocatable     :: ifpRealBuffer
+    integer(shortInt), dimension(:), allocatable :: ifpIntBuffer
+
+#ifdef MPI
+    if (fromBeginning) then
+      idx1 = 1
+      idx2 = self % sizeIFP * excess
+    else
+      idx1 = (self % pop - excess) * self % sizeIFP + 1
+      idx2 = self % pop * self % sizeIFP
+    end if
+
+    ifpRealBuffer = self % ancestorWeights(idx1:idx2)
+    call mpi_send(ifpRealBuffer, excess, MPI_DEFREAL, rank1, rank2, MPI_COMM_WORLD, error)
+    ifpRealBuffer = self % ancestorLifetimes(idx1:idx2)
+    call mpi_send(ifpRealBuffer, excess, MPI_DEFREAL, rank1, rank2, MPI_COMM_WORLD, error)
+    ifpIntBuffer = self % ancestorDelayedGroups(idx1:idx2)
+    call mpi_send(ifpRealBuffer, excess, MPI_SHORTINT, rank1, rank2, MPI_COMM_WORLD, error)
+
+    ! Move remainder of the ancestry down to the beginning
+    if (fromBeginning) then
+      idx3 = excess * self % sizeIFP + 1
+      idx4 = self % pop * self % sizeIFP
+      self % ancestorWeights(idx1:idx2) = self % ancestorWeights(idx3:idx4)
+      self % ancestorLifetimes(idx1:idx2) = self % ancestorLifetimes(idx3:idx4)
+      self % ancestorDelayedGroups(idx1:idx2) = self % ancestorDelayedGroups(idx3:idx4)
+    end if
+#endif
+
+  end subroutine loadBalanceIFPSend
+
+  !!
+  !! Perform load balancing on IFP information - receive info from another rank
+  !!
+  subroutine loadBalanceIFPReceive(self, excess, rank1, rank2, toBeginning)
+    class(particleDungeon), intent(inout)        :: self
+    integer(shortInt), intent(in)                :: excess
+    integer(shortInt), intent(in)                :: rank1
+    integer(shortInt), intent(in)                :: rank2
+    logical(defBool), intent(in)                 :: toBeginning
+    real(defReal), dimension(:), allocatable     :: ifpRealBuffer
+    real(defReal), dimension(:), allocatable     :: recvRealBuffer
+    integer(shortInt), dimension(:), allocatable :: ifpIntBuffer
+    integer(shortInt), dimension(:), allocatable :: recvIntBuffer
+    integer(shortInt)                            :: i, idx1, idx2, error
+
+#ifdef MPI
+    allocate(ifpRealBuffer(excess * self % sizeIFP))
+    allocate(ifpIntBuffer(excess * self % sizeIFP))
+    allocate(recvRealBuffer(excess * self % sizeIFP))
+    allocate(recvIntBuffer(excess * self % sizeIFP))
+        
+    ! First receive weights
+    call mpi_recv(ifpRealBuffer, excess, MPI_DEFREAL, rank1, rank2, &
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE, error)
+    do i = 1, abs(excess)
+      idx1 = (i - 1) * self % sizeIFP + 1
+      idx2 = i * self % sizeIFP
+      recvRealBuffer(idx1:idx2) = ifpRealBuffer(idx1:idx2)
+    end do
+    
+    if (toBeginning) then
+      ! First shift starting ancestry to the end of the dungeon
+      idx1 = self % sizeIFP * excess + 1
+      idx2 = self % sizeIFP * (self % pop + excess)
+      self % ancestorWeights(idx1:idx2) = &
+              self % ancestorWeights(1: self % sizeIFP * self % pop)
+      ! Then prepare to add the new ancestry to the start
+      idx1 = 1
+      idx2 = excess * self % sizeIFP
+    else
+      ! Otherwise add to the end
+      idx1 = self % pop * self % sizeIFP + 1
+      idx2 = (self % pop + excess) * self % sizeIFP
+    end if
+    self % ancestorWeights(idx1:idx2) = recvRealBuffer
+
+    ! Then receive lifetimes
+    call mpi_recv(ifpRealBuffer, excess, MPI_DEFREAL, rank1, rank2, &
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE, error)
+    do i = 1, abs(excess)
+      idx1 = (i - 1) * self % sizeIFP + 1
+      idx2 = i * self % sizeIFP
+      recvRealBuffer(idx1:idx2) = ifpRealBuffer(idx1:idx2)
+    end do
+    
+    if (toBeginning) then
+      ! First shift starting ancestry to the end of the dungeon
+      idx1 = self % sizeIFP * excess + 1
+      idx2 = self % sizeIFP * (self % pop + excess)
+      self % ancestorLifetimes(idx1:idx2) = &
+              self % ancestorLifetimes(1: self % sizeIFP * self % pop)
+      ! Then prepare to add the new ancestry to the start
+      idx1 = 1
+      idx2 = excess * self % sizeIFP
+    else
+      ! Otherwise add to the end
+      idx1 = self % pop * self % sizeIFP + 1
+      idx2 = (self % pop + excess) * self % sizeIFP
+    end if
+    self % ancestorLifetimes(idx1:idx2) = recvRealBuffer
+
+    ! Then receive delayed groups
+    call mpi_recv(ifpIntBuffer, excess, MPI_SHORTINT, rank1, rank2, &
+                MPI_COMM_WORLD, MPI_STATUS_IGNORE, error)
+    do i = 1, abs(excess)
+      idx1 = (i - 1) * self % sizeIFP + 1
+      idx2 = i * self % sizeIFP
+      recvIntBuffer(idx1:idx2) = ifpIntBuffer(idx1:idx2)
+    end do
+    
+    if (toBeginning) then
+      ! First shift starting ancestry to the end of the dungeon
+      idx1 = self % sizeIFP * excess + 1
+      idx2 = self % sizeIFP * (self % pop + excess)
+      self % ancestorDelayedGroups(idx1:idx2) = &
+              self % ancestorDelayedGroups(1: self % sizeIFP * self % pop)
+      ! Then prepare to add the new ancestry to the start
+      idx1 = 1
+      idx2 = excess * self % sizeIFP
+    else
+      ! Otherwise add to the end
+      idx1 = self % pop * self % sizeIFP + 1
+      idx2 = (self % pop + excess) * self % sizeIFP
+    end if
+    self % ancestorDelayedGroups(idx1:idx2) = recvIntBuffer
+#endif  
+
+  end subroutine loadBalanceIFPReceive
 
 end module particleDungeon_class
