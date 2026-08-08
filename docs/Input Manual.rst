@@ -1485,6 +1485,15 @@ Example: ::
       events { type eventClerk; map { <Map definition> } file /home/myEvents.txt; freq 10000;}
       }
 
+* sixFactorClerk, computes the components of the six factor formula: fast fission factor, 
+  fast non-leakage probability, resonance escape probability, thermal non-leakage probability,
+  thermal utilisation, and thermal eta. Also computes their product, keff. Computes most quantites
+  by a collision flux estimator, except for leakage and multiplicative scattering rates.
+
+  - thermalEnergy (*optional*, default 0.6e-6 MeV): the energy boundary between fast and thermal.
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
 * dancoffBellClerk, calculates a single-term rational approximation for a lattice
 
   - fuelMat: list of fuel material names
