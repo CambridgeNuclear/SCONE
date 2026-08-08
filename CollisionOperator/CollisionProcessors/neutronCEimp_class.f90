@@ -366,7 +366,8 @@ contains
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
 
-        ! If alpha, determine probability of keeping a delayed neutron
+        ! If alpha, determine probability of keeping a delayed neutron.
+        ! This lambda ratio can be negative if alpha is unconverged.
         if (abs(p % alpha) > epsilon(p % alpha)) then
           keepDel = p % pRNG % get() < lambda/(lambda + p % alpha)
           if (.not. keepDel) cycle
@@ -506,10 +507,12 @@ contains
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
 
-        ! If alpha, determine the weight of a delayed neutron
+        ! If alpha, determine the weight of a delayed neutron.
+        ! The lambda scaling prevents producing a negative weight
+        ! or hitting a singularity
         wD = ONE
         if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
-          wD = lambda/(lambda + p % alpha)
+          wD = lambda/(lambda + max(p % alpha, -lambda * 0.999))
         end if
 
         dir = rotateVector(p % dirGlobal(), mu, phi)

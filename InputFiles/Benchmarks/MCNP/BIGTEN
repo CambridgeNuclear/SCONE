@@ -11,9 +11,11 @@ type eigenPhysicsPackage;
 
 pop      200000;
 active 100;
-inactive 200;
+inactive 100;
 XSdata   ceData;
 dataType ce;
+outputFile BIGTEN;
+sizeIFP 10;
 
 collisionOperator { neutronCE {type neutronCEstd;}
                   }
@@ -25,10 +27,11 @@ inactiveTally {
               }
 
 activeTally  {
-                display (keff);
+                display (keff ifp);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
+                ifp  { type kineticIFPClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
                 flux { type collisionClerk;
                        map { type energyMap; grid log; min 0.001; max 20; N 300;}

@@ -279,9 +279,11 @@ contains
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
 
         ! If alpha, determine the weight of a delayed neutron
+        ! The lambda scaling prevents producing a negative weight
+        ! or hitting a singularity
         wD = ONE
-        if (abs(p % alpha) > epsilon(p % alpha) .and. lambda < huge(lambda)) then
-          wD = lambda/(lambda + p % alpha)
+        if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
+          wD = lambda/(lambda + max(p % alpha, -lambda * 0.99))
         end if
 
         dir = rotateVector(p % dirGlobal(), mu, phi)

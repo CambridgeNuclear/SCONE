@@ -37,6 +37,10 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
   requests to print the particle source (location, direction, energy, broodID and weight
   of each particle in the particleDungeon) to a text/bin file. If running with MPI, 
   this is done by each MPI rank separately
+* sizeIFP (*optional*, default = 0): number of generations of neutrons to recall when
+  scoring importance-weighted tallies. Stores/transfers more information in the dungeon.
+  Should be off by default due to additional overheads, but typically set to 10 when
+  attempting to estimate kinetic parameters.
 
 Example: ::
 
@@ -49,6 +53,7 @@ Example: ::
         seed     -244654;
         outputFile PWR_1;
         outputFormat asciiJSON;
+        sizeIFP 20;
 
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
@@ -222,6 +227,10 @@ alphaPhysicsPackage, used to estimate the alpha eigenvalue by the k-alpha algori
   to print the particle source (location, direction, energy of each particle
   in the particleDungeon) to a text file. If running with MPI, this is done 
   by each MPI rank separately
+* sizeIFP (*optional*, default = 0): number of generations of neutrons to recall when
+  scoring importance-weighted tallies. Stores/transfers more information in the dungeon.
+  Should be off by default due to additional overheads, but typically set to 10 when
+  attempting to estimate kinetic parameters.
 
 Example: ::
 
@@ -236,6 +245,7 @@ Example: ::
         alpha_0 100000;
         outputFile PuSphere;
         outputFormat asciiJSON;
+        sizeIFP 10;
 
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
@@ -1561,6 +1571,17 @@ Example: ::
 
       tally {
         tau { type removalTimeClerk; }
+      }
+
+* kineticIFPClerk, estimates the importance-weighted lifetime and beta-effective
+  of neutrons. Must be used in conjunction with either the k or alpha physics packages
+  with the option ``sizeIFP`` greater than 0. Also provides values of beta for each
+  precursor group. Can be displayed to the terminal.
+
+Example: ::
+
+      tally {
+        ifp { type kineticIFPClerk; }
       }
 
 Tally Responses
