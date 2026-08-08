@@ -130,14 +130,15 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
-    class(pureCapture), intent(in)         :: self
-    real(defReal), intent(out)             :: mu
-    real(defReal), intent(out)             :: phi
-    real(defReal), intent(out)             :: E_out
-    real(defReal), intent(in)              :: E_in
-    class(RNG), intent(inout)              :: rand
-    real(defReal), intent(out), optional   :: lambda
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda, group)
+    class(pureCapture), intent(in)           :: self
+    real(defReal), intent(out)               :: mu
+    real(defReal), intent(out)               :: phi
+    real(defReal), intent(out)               :: E_out
+    real(defReal), intent(in)                :: E_in
+    class(RNG), intent(inout)                :: rand
+    real(defReal), intent(out), optional     :: lambda
+    integer(shortInt), intent(out), optional :: group
 
     E_out = E_in
     mu = ONE
@@ -145,6 +146,7 @@ contains
 
     ! Default to the prompt particle
     if(present(lambda)) lambda = huge(lambda)
+    if(present(group)) group = 0
 
   end subroutine sampleOut
 

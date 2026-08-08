@@ -201,14 +201,15 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
-    class(thInelasticScatter), intent(in) :: self
-    real(defReal), intent(out)            :: mu
-    real(defReal), intent(out)            :: phi
-    real(defReal), intent(out)            :: E_out
-    real(defReal), intent(in)             :: E_in
-    class(RNG), intent(inout)             :: rand
-    real(defReal), intent(out), optional  :: lambda
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda, group)
+    class(thInelasticScatter), intent(in)    :: self
+    real(defReal), intent(out)               :: mu
+    real(defReal), intent(out)               :: phi
+    real(defReal), intent(out)               :: E_out
+    real(defReal), intent(in)                :: E_in
+    class(RNG), intent(inout)                :: rand
+    real(defReal), intent(out), optional     :: lambda
+    integer(shortInt), intent(out), optional :: group
     real(defReal)     :: E_min, E_max
     real(defReal)     :: E1, E2, f, eps
     real(defReal)     :: mu_ljk, mu1, mu2, mu3, muLeft, muRight
@@ -302,8 +303,9 @@ contains
     ! Sample phi
     phi = rand % get() * TWO_PI
 
-    ! Only prompt particles. Set delay
+    ! Only prompt particles. Set delay and group
     if(present(lambda)) lambda = huge(lambda)
+    if(present(group)) group = 0
 
   end subroutine sampleOut
 

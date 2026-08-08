@@ -15,6 +15,7 @@ add_sources(./tallyClerk_inter.f90
             ./eventClerk_class.f90
             ./centreOfMassClerk_class.f90
             ./mgXsClerk_class.f90
+	    ./kineticIFPClerk_class.f90
              )
 
 add_unit_tests(./Tests/collisionClerk_test.f90

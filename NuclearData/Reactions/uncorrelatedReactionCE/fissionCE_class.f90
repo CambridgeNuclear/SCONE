@@ -239,16 +239,17 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
-    class(fissionCE), intent(in)         :: self
-    real(defReal), intent(out)           :: mu
-    real(defReal), intent(out)           :: phi
-    real(defReal), intent(out)           :: E_out
-    real(defReal), intent(in)            :: E_in
-    class(RNG), intent(inout)            :: rand
-    real(defReal), intent(out), optional :: lambda
-    real(defReal)                        :: p_del, r1, r2
-    integer(shortInt)                    :: i, N
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda, group)
+    class(fissionCE), intent(in)             :: self
+    real(defReal), intent(out)               :: mu
+    real(defReal), intent(out)               :: phi
+    real(defReal), intent(out)               :: E_out
+    real(defReal), intent(in)                :: E_in
+    class(RNG), intent(inout)                :: rand
+    real(defReal), intent(out), optional     :: lambda
+    integer(shortInt), intent(out), optional :: group
+    real(defReal)                            :: p_del, r1, r2
+    integer(shortInt)                        :: i, N
     character(100),parameter :: Here = 'sample (fissionCE_class.f90)'
 
     ! Sample mu
@@ -268,6 +269,7 @@ contains
     if (r1 > p_del) then ! Prompt emission
       E_out = self % eLawPrompt % sample(E_in, rand)
       if (present(lambda)) lambda = huge(lambda)
+      if (present(group)) group = 0
 
     else ! Delayed emission
       r2 = rand % get()
@@ -278,6 +280,7 @@ contains
         if (r2 < ZERO) then
           E_out = self % delayed(i) % eLaw % sample(E_in, rand)
           if (present(lambda)) lambda = self % delayed(i) % lambda
+          if (present(group)) group = i
           return
 
         end if
@@ -287,6 +290,7 @@ contains
       N = size(self % delayed)
       E_out = self % delayed(N) % eLaw % sample(E_in, rand)
       if (present(lambda)) lambda = self % delayed(N) % lambda
+      if (present(group)) group = N
 
     end if
   end subroutine sampleOut

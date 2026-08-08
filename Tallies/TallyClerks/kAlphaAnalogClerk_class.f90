@@ -212,8 +212,8 @@ contains
     ! Print estimates to a console
     print '(A,F8.5,A,F8.5)', 'k (analog): ',  k, ' +/- ', STDk
     print '(A,F8.5)', 'k current: ',  self % k
-    print '(A,F8.4,A,F8.4)', 'Alpha accumulated: ',  alpha/10**6, 'us^-1 +/- ', STDa/10**6
-    print '(A,F8.4,A)', 'Alpha current: ',  self % alpha/10**6, 'us^-1'
+    print '(A,ES12.5,A,ES12.5)', 'Alpha accumulated: ',  alpha/10**6, 'us^-1 +/- ', STDa/10**6
+    print '(A,ES12.5,A)', 'Alpha current: ',  self % alpha/10**6, 'us^-1'
 
   end subroutine display
 

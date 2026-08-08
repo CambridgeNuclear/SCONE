@@ -232,7 +232,7 @@ contains
     type(neutronMicroXSs)                :: microXSs
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
-    integer(shortInt)                    :: n, i
+    integer(shortInt)                    :: n, i, group
     real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, kT, lambda, wD
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
@@ -273,15 +273,17 @@ contains
       r   = p % rGlobal()
 
       do i = 1, n
-        call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda)
+        call fission % sampleOut(mu, phi, E_out, collDat % E, p % pRNG, lambda, group)
 
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
 
         ! If alpha, determine the weight of a delayed neutron
+        ! The lambda scaling prevents producing a negative weight
+        ! or hitting a singularity
         wD = ONE
-        if (abs(p % alpha) > epsilon(p % alpha) .and. lambda < huge(lambda)) then
-          wD = lambda/(lambda + p % alpha)
+        if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
+          wD = lambda/(lambda + max(p % alpha, -lambda * 0.99))
         end if
 
         dir = rotateVector(p % dirGlobal(), mu, phi)
@@ -297,6 +299,7 @@ contains
         pTemp % E   = E_out
         pTemp % wgt = wgt * wD
         pTemp % collisionN = 0
+        pTemp % precGroup = group
 
         ! If storing precursors, do so when a finite lambda occurs
         if (self % makePrec .and. lambda < huge(lambda)) then
@@ -305,7 +308,7 @@ contains
 
         end if
 
-        call nextCycle % detain(pTemp)
+        call nextCycle % detain(pTemp, p % getIFPInfo())
 
         ! Report birth of new particle
         call tally % reportSpawn(N_FISSION, p, pTemp)

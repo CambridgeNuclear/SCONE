@@ -217,12 +217,10 @@ contains
     class(particleDungeon),intent(inout)     :: thisCycle
     class(particleDungeon),intent(inout)     :: nextCycle
     integer(shortInt)                        :: n, i
-    real(defReal)                            :: wgt, w0, rand1, k
+    real(defReal)                            :: rand1, k
     type(particleState)                      :: pTemp
 
     ! Obtain required data
-    wgt   = p % w                ! Current weight
-    w0    = p % preHistory % wgt ! Starting weight
     rand1 = p % pRNG % get()     ! Random number to sample sites
     k     = p % k_eff
 
@@ -239,8 +237,10 @@ contains
     ! Store neutrons for next cycle
     pTemp = p
     pTemp % collisionN = 0
+    pTemp % precGroup = 0
+    pTemp % lambda = huge(ONE)
     do i = 1,n
-      call nextCycle % detain(pTemp)
+      call nextCycle % detain(pTemp, p % getIFPInfo())
       call tally % reportSpawn(N_TIME_PROD, p, pTemp)
     end do
     p % isDead =.true.
