@@ -8,3 +8,7 @@ add_sources( source_inter.f90
              mixSource_class.f90
              fileSource_class.f90
              )
+
+add_integration_tests(
+                      ./Tests/materialSource_iTest.f90
+                     )
