@@ -914,6 +914,7 @@ contains
 
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
+    maxNuc = 0
     do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
       maxNuc = max(maxNuc, size(mat % nuclides))
