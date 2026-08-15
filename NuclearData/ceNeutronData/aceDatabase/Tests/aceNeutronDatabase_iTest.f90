@@ -23,7 +23,7 @@ module aceNeutronDatabase_iTest
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = &
+  character(*), parameter :: MAT_INPUT_STR = &
   & "water {                     &
   &       composition {          &
   &       1001.03 5.028E-02;     &
@@ -34,6 +34,24 @@ module aceNeutronDatabase_iTest
   &        composition {         &
   &        92233.03 2.286E-02;   &
   &        8016.03  4.572E-02;   &
+  &                    }         &
+  &       }"
+
+  ! Materials with DIFFERENT nuclide counts (1 and 4), the larger one second, so
+  ! that the maximum nuclide count in aceNeutronDatabase % init must grow across
+  ! the material loop before the nuclide-index workspace is allocated.
+  character(*), parameter :: MAT_MIXED_STR = &
+  & "oxygen {                    &
+  &         composition {        &
+  &         8016.03 2.505E-02;   &
+  &                     }        &
+  &         }                    &
+  &  fuel {                      &
+  &        composition {         &
+  &        1001.03  5.028E-02;   &
+  &        8016.03  2.505E-02;   &
+  &        92233.03 2.286E-02;   &
+  &        92235.03 1.000E-03;   &
   &                    }         &
   &       }"
 
@@ -266,5 +284,93 @@ contains
     call mm_kill()
 
   end subroutine test_aceNeutronDatabase
+
+  !!
+  !! Material -> nuclide mapping built by init, for materials of different sizes
+  !!
+  !! The mapping is assembled through the nuclide-index workspace sized by the
+  !! maximum nuclide count over all materials, so these assertions pin exactly
+  !! the state that workspace produces: nuclide list sizes, nuclide association,
+  !! ZAID identity, and the fissile flags accumulated in the same loop.
+  !!
+@Test
+  subroutine test_initMaterialNuclideMapping()
+    character(nameLen)               :: ZAID
+    class(nuclearDatabase), pointer  :: ptr
+    integer(shortInt)                :: i, nH1, nO16, nU233, nU235
+    type(aceNeutronDatabase), target :: data
+    type(ceNeutronMaterial), pointer :: mat
+    type(aceNeutronNuclide), pointer :: nuc
+    type(dictionary)                 :: dataDict, matDict
+
+    ! Prepare dictionaries and build material menu.
+    call charToDict(matDict, MAT_MIXED_STR)
+    call charToDict(dataDict, ACE_INPUT_STR)
+    call mm_init(matDict)
+
+    ! Initialise data.
+    ptr => data
+    call data % init(dataDict, ptr, silent = .true.)
+    call data % activate([1, 2], silent = .true.)
+
+    ! Material 1 (oxygen): single nuclide, non-fissile.
+    mat => ceNeutronMaterial_TptrCast(data % getMaterial(1))
+    @assertAssociated(mat)
+    @assertEqual(1, size(mat % nuclides))
+    @assertEqual(1, size(mat % dens))
+    @assertFalse(mat % isFissile())
+
+    nuc => aceNeutronNuclide_TptrCast(data % getNuclide(mat % nuclides(1)))
+    @assertAssociated(nuc)
+    @assertEqual('8016.03c', trim(adjustl(nuc % ZAID)))
+
+    ! Material 2 (fuel): four nuclides, fissile.
+    mat => ceNeutronMaterial_TptrCast(data % getMaterial(2))
+    @assertAssociated(mat)
+    @assertEqual(4, size(mat % nuclides))
+    @assertEqual(4, size(mat % dens))
+    @assertTrue(mat % isFissile())
+
+    ! Every stored index must map to an associated nuclide, and the four
+    ! ZAIDs of the composition must each appear exactly once.
+    nH1 = 0
+    nO16 = 0
+    nU233 = 0
+    nU235 = 0
+    do i = 1, size(mat % nuclides)
+      nuc => aceNeutronNuclide_TptrCast(data % getNuclide(mat % nuclides(i)))
+      @assertAssociated(nuc)
+
+      ZAID = trim(adjustl(nuc % ZAID))
+      select case(trim(ZAID))
+        case('1001.03c')
+          nH1 = nH1 + 1
+
+        case('8016.03c')
+          nO16 = nO16 + 1
+
+        case('92233.03c')
+          nU233 = nU233 + 1
+
+        case('92235.03c')
+          nU235 = nU235 + 1
+
+      end select
+
+    end do
+    @assertEqual(1, nH1, 'H-1 mapped wrong number of times.')
+    @assertEqual(1, nO16, 'O-16 mapped wrong number of times.')
+    @assertEqual(1, nU233, 'U-233 mapped wrong number of times.')
+    @assertEqual(1, nU235, 'U-235 mapped wrong number of times.')
+
+    ! Assert that four unique nuclides were loaded in total.
+    @assertAssociated(ceNeutronNuclide_CptrCast(data % getNuclide(4)))
+    @assertNotAssociated(ceNeutronNuclide_CptrCast(data % getNuclide(5)))
+
+    ! Clean everything.
+    call data % kill()
+    call mm_kill()
+
+  end subroutine test_initMaterialNuclideMapping
 
 end module aceNeutronDatabase_iTest
