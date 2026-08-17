@@ -282,6 +282,7 @@ contains
     allocate(entries(newSize) )
 
     keywords(1:oldSize) = self % keywords
+    keywords(oldSize + 1:newSize) = ''
 
     do i=1,oldSize
      entries(i) = self % entries(i)
