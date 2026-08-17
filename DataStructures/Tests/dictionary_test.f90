@@ -609,4 +609,35 @@ contains
 
   end subroutine testAddressOfNodes
 
+  !!
+  !! Test lookups on a dictionary whose keyword array has been extended.
+  !!
+@Test
+  subroutine testExtendByLookups(this)
+    class(test_dictionary), intent(inout) :: this
+    character(nameLen)                    :: name
+    integer(shortInt)                     :: i, storedInt
+
+    ! setUp already forces one extension (init(1) + 8 entries). Force a
+    ! second one by storing additional keywords.
+    do i = 1, 20
+      write(name, '(A,I0)') 'extendedKeyword', i
+      call this % dict % store(name, i)
+
+    end do
+
+    ! All new entries stored must be retrievable.
+    do i = 1, 20
+      write(name, '(A,I0)') 'extendedKeyword', i
+      call this % dict % get(storedInt, name)
+      @assertEqual(i, storedInt, 'Value stored across extension.')
+
+    end do
+
+    ! Lookups of absent keywords must scan the extended tail cleanly.
+    @assertFalse(this % dict % isPresent('absentKeyword'), 'isPresent on absent keyword.')
+    @assertTrue(this % dict % isPresent('myReal'), 'isPresent on keyword stored before extension.')
+
+  end subroutine testExtendByLookups
+
 end module dictionary_test
