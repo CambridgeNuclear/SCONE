@@ -220,8 +220,8 @@ contains
     ! Create document charTape
     call file % append(loc_data)
 
-    ! parseDict does not like '}}' ending so add an extra space
-    call file % append(' }' )
+    ! Append with dictionary terminator.
+    call file % append('}')
 
     ! Reinitialise dictionary
     call dict % kill()
@@ -270,7 +270,7 @@ contains
     character(100), parameter :: Here = 'parseDict (dictParser_func.f90)'
 
     ! Find next location & token
-    do while (pos < tape % length())
+    do while (pos <= tape % length())
       nextSymbol = tape % scanFrom(pos,';{}')
       if(nextSymbol == 0) call fatalError(Here,"There are tokens ';{}' in the charTape!'")
       fin = pos + nextSymbol - 1

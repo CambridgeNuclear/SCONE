@@ -60,5 +60,30 @@ contains
 
   end subroutine testFromChar
 
+  !!
+  !! Character data ending with '}' produces a tape ending with '}}' once the
+  !! padding workaround is removed. This tests that the parser handles it.
+  !!
+@Test
+  subroutine testFromCharEndingWithBrace()
+    class(dictionary), pointer :: dictPtr
+    integer(shortInt)          :: tempInt
+    type(dictionary)           :: dict
+
+    ! Parse input tape.
+    call charToDict(dict, "myInt 7; subDict { myInt 3; }")
+
+    ! Retrieve stored integer.
+    call dict % get(tempInt, 'myInt')
+    @assertEqual(7, tempInt)
+
+    ! Retrieve pointer to sub-dictionary.
+    dictPtr => dict % getDictPtr('subDict')
+
+    ! Retrieve integer stored in sub-dictionary.
+    call dictPtr % get(tempInt, 'myInt')
+    @assertEqual(3, tempInt)
+
+  end subroutine testFromCharEndingWithBrace
 
 end module dictParser_test

@@ -45,5 +45,30 @@ contains
 
   end subroutine testFromFile
 
+  !!
+  !! Test reading a dictionary from a file without a trailing newline.
+  !!
+@Test
+  subroutine testFromFileNoTrailingNewline()
+    class(dictionary), pointer :: dictPtr
+    integer(shortInt)          :: tempInt
+    real(defReal)              :: tempReal
+    type(dictionary)           :: dict
+
+    ! Parse test file.
+    call fileToDict(dict, './IntegrationTestFiles/testDictionaryNoNewline')
+
+    ! Retrieve stored integer.
+    call dict % get(tempInt, 'myInt')
+    @assertEqual(7, tempInt)
+
+    ! Retrieve pointer to sub-dictionary.
+    dictPtr => dict % getDictPtr('subDict')
+
+    ! Retrieve real stored in sub-dictionary.
+    call dictPtr % get(tempReal, 'myReal')
+    @assertEqual(1.5_defReal, tempReal)
+
+  end subroutine testFromFileNoTrailingNewline
 
 end module dictParser_iTest
