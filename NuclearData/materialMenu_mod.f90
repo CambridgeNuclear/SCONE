@@ -340,6 +340,7 @@ contains
       call moderDict % keys(moderKeys)
       nSab = size(moderKeys)
     else
+      moderDict => null()
       nSab = 0
     end if
 
@@ -347,23 +348,25 @@ contains
     foundModer = 0
     do i =1,size(keys)
       ! Check if S(a,b) is on and required for that nuclide
-      if ((nSab > 0) .and. moderDict % isPresent(keys(i))) then
-        self % nuclides(i) % hasSab = .true.
-        foundModer = foundModer + 1
+      if (nSab > 0) then
+        if (moderDict % isPresent(keys(i))) then
+          self % nuclides(i) % hasSab = .true.
+          foundModer = foundModer + 1
 
-        ! Check for stochastic mixing - this will depend on the
-        ! size of the array of files produce
-        call moderDict % get(filenames, keys(i))
-        if (size(filenames) == 2) then
-          self % nuclides(i) % file_Sab1 = filenames(1)
-          self % nuclides(i) % file_Sab2 = filenames(2)
-          self % nuclides(i) % sabMix = .true.
-        elseif (size(filenames) == 1) then
-          self % nuclides(i) % file_Sab1 = filenames(1)
-        else
-          print *,filenames
-          call fatalError(Here,'Unexpectedly long moder contents. Should be 1 or 2 '//&
-                  'entries.')
+          ! Check for stochastic mixing - this will depend on the
+          ! size of the array of files produce
+          call moderDict % get(filenames, keys(i))
+          if (size(filenames) == 2) then
+            self % nuclides(i) % file_Sab1 = filenames(1)
+            self % nuclides(i) % file_Sab2 = filenames(2)
+            self % nuclides(i) % sabMix = .true.
+          elseif (size(filenames) == 1) then
+            self % nuclides(i) % file_Sab1 = filenames(1)
+          else
+            print *,filenames
+            call fatalError(Here,'Unexpectedly long moder contents. Should be 1 or 2 '//&
+                    'entries.')
+          end if
         end if
       end if
 
