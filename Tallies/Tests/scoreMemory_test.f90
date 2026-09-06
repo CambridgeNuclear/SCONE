@@ -263,6 +263,105 @@ contains
 
   end subroutine testKillUnalloc
 
+  !!
+  !! Test that getResult rejects invalid bin indices.
+  !!
+  !! Bins are indexed 1..N, so index 0 lies outside the memory. The documented
+  !! behaviour for an invalid index is to return zero mean and zero STD instead
+  !! of reading outside the bin storage. A score is placed in the last bin so
+  !! that a read next to the array bounds cannot go unnoticed.
+  !!
+@Test(cases=[1])
+  subroutine testGetResultInvalidIdx(this)
+    class(test_scoreMemory), intent(inout) :: this
+    real(defReal)                          :: mean, STD
+    type(scoreMemory)                      :: mem
+    real(defReal), parameter               :: TOL = 1.0E-9
+
+    ! Initialise with batchSize = 1 and place a score in the last bin.
+    call mem % init(2_longInt, 1, batchSize = 1)
+    call mem % score(2.0_defReal, 2_longInt)
+    call mem % reduceBins()
+
+    ! Index 0 is outside the 1..N bin range so check that mean and STD
+    ! are both zero.
+    call mem % getResult(mean, STD, 0_longInt)
+    @assertEqual(ZERO, mean, TOL, 'getResult mean, idx = 0:')
+    @assertEqual(ZERO, STD, TOL, 'getResult STD, idx = 0:')
+
+    call mem % getResult(mean, 0_longInt)
+    @assertEqual(ZERO, mean, TOL, 'getResult (no STD) mean, idx = 0:')
+
+    ! Strictly negative indices must behave the same way.
+    call mem % getResult(mean, STD, -1_longInt)
+    @assertEqual(ZERO, mean, TOL, 'getResult mean, idx = -1:')
+    @assertEqual(ZERO, STD, TOL, 'getResult STD, idx = -1:')
+
+    ! Strictly positive and out-of-bound indices must behave the same way.
+    call mem % getResult(mean, STD, 3_longInt)
+    @assertEqual(ZERO, mean, TOL, 'getResult mean, idx > N:')
+    @assertEqual(ZERO, STD, TOL, 'getResult STD, idx > N:')
+
+    ! Clean up.
+    call mem % kill()
+
+  end subroutine testGetResultInvalidIdx
+
+  !!
+  !! Test that boundary indices (1 and N) pass all index guards.
+  !!
+  !! Pins the lower and upper edge of the accepted index range for scoring,
+  !! accumulation, bin closing, resetting, and result retrieval, so the guards
+  !! cannot drift and start rejecting valid bins.
+  !!
+@Test(cases=[1])
+  subroutine testGuardBoundaries(this)
+    class(test_scoreMemory), intent(inout) :: this
+    real(defReal)                          :: mean, STD
+    type(scoreMemory)                      :: mem
+    real(defReal), parameter               :: TOL = 1.0E-9
+
+    ! Initialise with batchSize = 1.
+    call mem % init(2_longInt, 1, batchSize = 1)
+
+    ! Place scores at both edges of the index range and check them.
+    call mem % score(1.5_defReal, 1_longInt)
+    call mem % score(2.5_defReal, 2_longInt)
+    call mem % reduceBins()
+
+    @assertEqual(1.5_defReal, mem % getScore(1_longInt), TOL, 'getScore, idx = 1:')
+    @assertEqual(2.5_defReal, mem % getScore(2_longInt), TOL, 'getScore, idx = N:')
+
+    ! Close bins at both edges, then close the (empty) cycle.
+    call mem % closeBin(ONE, 1_longInt)
+    call mem % closeBin(ONE, 2_longInt)
+    call mem % closeCycle(ONE)
+
+    ! Check results at both edges.
+    call mem % getResult(mean, STD, 1_longInt)
+    @assertEqual(1.5_defReal, mean, TOL, 'getResult mean, idx = 1:')
+
+    call mem % getResult(mean, 2_longInt)
+    @assertEqual(2.5_defReal, mean, TOL, 'getResult mean, idx = N:')
+
+    ! Accumulate results directly and reset bins at both edges.
+    call mem % accumulate(1.0_defReal, 1_longInt)
+    call mem % accumulate(1.0_defReal, 2_longInt)
+    call mem % resetBin(1_longInt)
+    call mem % resetBin(2_longInt)
+
+    ! Check that mean and STD have been reset to zero at both edges.
+    call mem % getResult(mean, STD, 1_longInt)
+    @assertEqual(ZERO, mean, TOL, 'getResult mean after resetBin, idx = 1:')
+
+    call mem % getResult(mean, STD, 2_longInt)
+    @assertEqual(ZERO, mean, TOL, 'getResult mean after resetBin, idx = N:')
+
+    ! Clean up.
+    call mem % kill()
+
+  end subroutine testGuardBoundaries
+
 end module scoreMemory_test
 !! MATLAB SCRIPT USED TO GENERATE REFERENCE VALUES
 !clear

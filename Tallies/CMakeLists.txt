@@ -9,6 +9,9 @@ add_sources( ./tallyCodes.f90
              ./tallyAdmin_class.f90
              ./scoreMemory_class.f90)
 
-add_unit_tests(./Tests/scoreMemory_test.f90)
+add_unit_tests(
+               ./Tests/scoreMemory_test.f90
+               ./Tests/tallyAdmin_test.f90
+              )
 
 
