@@ -24,6 +24,22 @@ module materialMenu_test
   &       }                                   &
   &     }                                     "
 
+  ! Materials with and without a 'moder' entry in one menu, so that every
+  ! branch of the S(a,b) logic in init_materialItem is walked in one
+  ! test. The material without 'moder' comes first on purpose.
+  character(*),parameter :: MODER_STR = "                    &
+  &fuel { composition { 92235.03 0.001; 8016.03 0.045; } }   &
+  &water { temp 300;                                         &
+  &        composition {                                     &
+  &          1001.03 0.0667;                                 &
+  &          8016.03 0.0334;                                 &
+  &        }                                                 &
+  &        moder { 1001.03 (h-h2o.42); }                     &
+  &      }                                                   &
+  &graphite { composition { 6012.06 0.0803; }                &
+  &           moder { 6012.06 (grph.42 grph.43); }           &
+  &         }                                                "
+
 contains
 
   !!
@@ -106,5 +122,72 @@ contains
 
   end subroutine testMaterialMenu
 
+  !!
+  !! Test the S(a,b) ('moder') logic of the material definitions using materials with:
+  !!   - a single file;
+  !!   - stochastic mixing of two files;
+  !!   - no 'moder'.
+  !!
+@Test
+  subroutine testMaterialMenuModer()
+    character(nameLen)          :: name
+    integer(shortInt)           :: i, idx
+    type(dictionary)            :: matDict
+    type(materialItem), pointer :: matPtr
+
+    call charToDict(matDict, MODER_STR)
+    call init_menu(matDict)
+    @assertEqual(3, nMat())
+
+    ! Water: only hydrogen has S(a,b), with a single file.
+    name = 'water'
+    idx = nameMap % getOrDefault(name, 0)
+    @assertTrue(idx > 0)
+    matPtr => getMatPtr(idx)
+    @assertEqual(2, size(matPtr % nuclides))
+    do i = 1, 2
+      if (matPtr % nuclides(i) % Z == 1) then
+        @assertTrue(matPtr % nuclides(i) % hasSab)
+        @assertFalse(matPtr % nuclides(i) % sabMix)
+        @assertEqual('h-h2o.42', trim(matPtr % nuclides(i) % file_Sab1))
+
+      elseif (matPtr % nuclides(i) % Z == 8) then
+        @assertFalse(matPtr % nuclides(i) % hasSab)
+        @assertFalse(matPtr % nuclides(i) % sabMix)
+
+      else
+        @assertTrue(.false., 'Error when reading water composition.')
+
+      end if
+
+    end do
+
+    ! Graphite: two S(a,b) files -> stochastic mixing.
+    name = 'graphite'
+    idx = nameMap % getOrDefault(name, 0)
+    @assertTrue(idx > 0)
+    matPtr => getMatPtr(idx)
+    @assertEqual(1, size(matPtr % nuclides))
+    @assertTrue(matPtr % nuclides(1) % hasSab)
+    @assertTrue(matPtr % nuclides(1) % sabMix)
+    @assertEqual('grph.42', trim(matPtr % nuclides(1) % file_Sab1))
+    @assertEqual('grph.43', trim(matPtr % nuclides(1) % file_Sab2))
+
+    ! Fuel: no 'moder' entry.
+    name = 'fuel'
+    idx = nameMap % getOrDefault(name, 0)
+    @assertTrue(idx > 0)
+    matPtr => getMatPtr(idx)
+    @assertEqual(2, size(matPtr % nuclides))
+    do i = 1, 2
+      @assertFalse(matPtr % nuclides(i) % hasSab)
+      @assertFalse(matPtr % nuclides(i) % sabMix)
+
+    end do
+
+    ! Clean up.
+    call kill_menu()
+
+  end subroutine testMaterialMenuModer
 
 end module materialMenu_test
