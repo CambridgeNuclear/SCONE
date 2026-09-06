@@ -738,7 +738,7 @@ contains
     integer(shortInt)                  :: i
     integer(shortInt), save            :: idx
     real(defReal)                      :: normFactor, normScore
-    character(100), parameter :: Here ='reportCycleEnd (tallyAdmin)class.f90)'
+    character(100), parameter :: Here ='reportCycleEnd (tallyAdmin_class.f90)'
     !$omp threadprivate(idx)
 
     ! Call attachment
@@ -767,8 +767,10 @@ contains
       end do
       !$omp end parallel do
 
-      ! Calculate normalisation factor
-      if (self % normBInAddr /= NO_NORM) then
+      ! Calculate normalisation factor. Score bins are folded into reduced bins only on 
+      ! batch-closing cycles, and closeCycle applies the factor only then, so the factor
+      ! is computed only when this cycle closes a batch.
+      if (self % normBInAddr /= NO_NORM .and. self % mem % lastCycle()) then
         normScore  = self % mem % getScore(self % normBinAddr)
         if (normScore == ZERO) then
           call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
@@ -780,10 +782,14 @@ contains
         normFactor = ONE
       end if
 
-      ! Close cycle multipling all scores by a multiplication factor
-      call self % mem % closeCycle(normFactor)
-
     end if
+
+    ! Close cycle multiplying all scores by a multiplication factor.
+    ! Note: this is called on ALL ranks so that the cycle and batch 
+    ! counters stay synchronised across processes (the reduction gate 
+    ! in reduceBins depends on them); after the reduction the non-master 
+    ! score bins hold zero, so the value of the factor is irrelevant there.
+    call self % mem % closeCycle(normFactor)
 
   end subroutine reportCycleEnd
 
