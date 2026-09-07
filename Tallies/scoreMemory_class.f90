@@ -197,7 +197,7 @@ contains
     character(100),parameter :: Here = 'resetBin (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0_longInt .or. idx > self % N) then
+    if( idx < 1_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -220,7 +220,7 @@ contains
     character(100),parameter :: Here = 'score_defReal (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0_longInt .or. idx > self % N) then
+    if( idx < 1_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -266,7 +266,7 @@ contains
     character(100),parameter :: Here = 'accumulate_defReal (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0_longInt .or. idx > self % N) then
+    if( idx < 1_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -353,7 +353,7 @@ contains
     character(100),parameter :: Here = 'closeBin (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if (idx < 0_longInt .or. idx > self % N) then
+    if (idx < 1_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -544,7 +544,7 @@ contains
     real(defReal)                           :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if (idx < 0_longInt .or. idx > self % N) then
+    if (idx < 1_longInt .or. idx > self % N) then
       mean = ZERO
       STD = ZERO
       return
@@ -585,7 +585,7 @@ contains
     integer(shortInt)                       :: N
 
     !! Verify index. Return 0 if not present
-    if (idx < 0_longInt .or. idx > self % N) then
+    if (idx < 1_longInt .or. idx > self % N) then
       mean = ZERO
       return
     end if
