@@ -46,6 +46,10 @@ contains
     r2 = rand % get()
     r3 = rand % get()
 
+    ! Guard against the generator returning exactly 0.0 -> log(0.0) = -Inf.
+    r2 = max(r2, tiny(ONE))
+    r3 = max(r3, tiny(ONE))
+
     ! Define B(a,b) as a RANDOM VARIABLE governed by beta(a,b) distribution
     ! Similarly define G(a,b) as a RANDOM VARIABLE governed by gamma(a,b) distribution
     ! Note that B(a,b)*G(a,b) is a product of RANDOM VARIABLES not of Probability Density Functions

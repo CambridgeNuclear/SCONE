@@ -56,28 +56,48 @@ contains
     idx = linearSearchFloor(self % cdf, rand)
     call searchError(idx, Here)
 
+    idx = min(idx, size(self % x) - 1)
+
+    ci = self % cdf(idx)
+    pi = self % pdf(idx)
+
     select case (self % flag)
       case (histogram)
-        ci = self % cdf(idx)
-        pi = self % pdf(idx)
+        if (pi == ZERO) then
+          ! Zero-density bin: the CDF is flat across the bin, so r = ci and (r-ci) / pi 
+          ! is 0.0/0.0. The bin carries no probability, so no position within it is 
+          ! meaningful. Return its lower edge.
+          x = self % x(idx)
 
-        x = self % x(idx) + (rand-ci) / pi
+        else
+          x = self % x(idx) + (rand-ci) / pi
 
+        end if
 
         R = self % R(idx)
         A = self % A(idx)
 
       case (linLin)
-        ci = self % cdf(idx)
-        pi = self % pdf(idx)
-
         f = (self % pdf(idx+1) - self % pdf(idx)) / (self % x(idx+1) - self % x(idx))
 
-        if (f == 0) then
-          x = self % x(idx) + (rand-ci) / pi
+        delta = pi * pi + TWO * f * (rand-ci)
+        if (f == ZERO .or. delta < ZERO) then
+          ! delta < ZERO has no real root: fall back to the constant-density inversion, 
+          ! which always has one.
+          if (pi == ZERO) then
+            ! Zero-density bin, as in the histogram branch. Return lower edge. R and A 
+            ! below then interpolate using f = ZERO, giving R(idx) and A(idx), which is
+            ! consistent with x sitting on the lower edge.
+            x = self % x(idx)
+
+          else
+            x = self % x(idx) + (rand-ci) / pi
+
+          end if
+
         else
-          delta = sqrt( pi*pi + 2*f*(rand-ci))
-          x = self % x(idx) + (delta - pi) / f
+          x = self % x(idx) + (sqrt(delta) - pi) / f
+
         end if
 
         ! Calculate interpolation factor
@@ -90,6 +110,7 @@ contains
 
       case default
         call fatalError(Here,'Unknown interpolation flag')
+        x = -ONE
 
     end select
 
@@ -230,6 +251,9 @@ contains
 
     end select
 
+    ! Ensure that CDF ends with 1.0 to avoid random numbers sampled above the CDF table.
+    self % cdf(size(self % cdf)) = ONE
+
   end subroutine initPdf
 
   !!
@@ -243,7 +267,7 @@ contains
     real(defReal),dimension(:),intent(in)  :: R
     real(defReal),dimension(:),intent(in)  :: A
     integer(shortInt),intent(in)           :: flag ! Interpolation scheme flag
-    character(100),parameter               :: Here='init (tabularPdf_class.f90)'
+    character(100),parameter               :: Here='initCdf (kalbachTable_class.f90)'
 
     ! Check Input
     if( size(x) /= size(pdf)) call fatalError(Here,'PDF and x have diffrent size')
@@ -275,6 +299,11 @@ contains
     self % cdf = cdf
     self % R   = R
     self % A   = A
+
+    ! Ensure that CDF begins with 0.0 and ends with 1.0 to avoid random numbers
+    ! sampled outside the CDF table.
+    self % cdf(1) = ZERO
+    self % cdf(size(cdf)) = ONE
 
     select case (flag)
       case(histogram)

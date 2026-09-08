@@ -186,5 +186,63 @@ contains
 
   end subroutine testSampleWithBin
 
+  !!
+  !! Histogram distribution with a trailing zero-density bin: the computed CDF is
+  !! flat over the last bin, so rand = 1.0 resolves onto the plateau where the
+  !! unguarded inversion evaluates 0.0/0.0 for the value and for eps. The sample 
+  !! must return the plateau edge with eps = 0.0.
+  !!
+@Test
+  subroutine testZeroDensityPlateau(this)
+    class(test_tabularPdf), intent(inout)  :: this
+    integer(shortInt)                      :: bin
+    real(defReal)                          :: eps, x
+    type(tabularPdf)                       :: tab
+    real(defReal), parameter               :: TOL  = 1.0E-9_defReal
+    real(defReal), dimension(3), parameter :: GRID = [1.0_defReal, 2.0_defReal, 3.0_defReal]
+    real(defReal), dimension(3), parameter :: PDF  = [1.0_defReal, 0.0_defReal, 0.0_defReal]
+
+    ! Initialise CDF.
+    call tab % init(GRID, PDF, tabPdfHistogram)
+
+    ! Sample using a random draw on the plateau and check that the value sampled
+    ! corresponds to the plateau edge and that eps = 0.0.
+    x = tab % sample(1.0_defReal, bin, eps)
+    @assertEqual(2.0_defReal, x, TOL)
+    @assertEqual(2, bin)
+    @assertEqual(ZERO, eps, TOL)
+
+    ! Clean up.
+    call tab % kill()
+
+  end subroutine testZeroDensityPlateau
+
+  !!
+  !! Loaded CDF begins inside the acceptance tolerance but above 0.0. Random
+  !! numbers in [0.0, cdf(1)) must still produce a valid sample instead of a
+  !! mid-run search failure.
+  !!
+@Test
+  subroutine testSampleBelowCDFStart(this)
+    class(test_tabularPdf), intent(inout)  :: this
+    real(defReal)                          :: x
+    type(tabularPdf)                       :: tab
+    real(defReal), dimension(3), parameter :: GRID  = [1.0_defReal, 2.0_defReal, 3.0_defReal]
+    real(defReal), dimension(3), parameter :: PDF = [0.5_defReal, 0.5_defReal, 0.5_defReal]
+    real(defReal), dimension(3), parameter :: CDF = [1.0E-7_defReal, 0.5_defReal, 1.0_defReal]
+
+    ! Initialise CDF.
+    call tab % init(GRID, PDF, CDF, tabPdfLinLin)
+
+    ! Sample using a random draw just above 0.0 and check that the number 
+    ! sampled is valid.
+    x = tab % sample(1.0E-8_defReal)
+    @assertTrue(x == x)
+    @assertTrue(x >= 1.0_defReal .and. x <= 3.0_defReal)
+
+    ! Clean up.
+    call tab % kill()
+
+  end subroutine testSampleBelowCDFStart
 
 end module tabularPdf_test

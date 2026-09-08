@@ -66,28 +66,60 @@ contains
 
     select case (self % flag)
       case (histogram)
+        if (pi == ZERO) then
+          ! Zero-density bin: the CDF is flat across the bin, so r = ci and (r-ci) / pi 
+          ! is 0.0/0.0. The bin carries no probability, so no position within it is 
+          ! meaningful. Return its lower edge. eps below must follow the same choice.
+          x = self % x(idx)
 
-        x = self % x(idx) + (r-ci) / pi
+        else
+          x = self % x(idx) + (r-ci) / pi
+
+        end if
 
       case (linLin)
-
         f = (self % pdf(idx+1) - self % pdf(idx)) / (self % x(idx+1) - self % x(idx))
 
-        if (f == 0 .or. (pi*pi + 2*f*(r-ci)) < 0) then
-          x = self % x(idx) + (r-ci) / pi
+        delta = pi * pi + TWO * f * (r-ci)
+        if (f == ZERO .or. delta < ZERO) then
+          ! delta < ZERO has no real root: fall back to the constant-density inversion, 
+          ! which always has one.
+          if (pi == ZERO) then
+            ! Zero-density bin, as in the histogram branch. Return lower edge, eps = ZERO.
+            x = self % x(idx)
+
+          else
+            x = self % x(idx) + (r-ci) / pi
+
+          end if
+
         else
-          delta = sqrt( pi*pi + 2*f*(r-ci))
-          x = self % x(idx) + (delta - pi) / f
+          x = self % x(idx) + (sqrt(delta) - pi) / f
+
         end if
 
       case default
         call fatalError(Here,'Unknown interpolation flag')
         x = -ONE
+
     end select
 
     ! Return the sampled index
     if (present(res_idx)) res_idx = idx
-    if (present(eps)) eps = (r - ci)/(self % cdf(idx+1) - ci)
+    if (present(eps)) then
+      if (self % cdf(idx+1) == ci) then
+        ! Zero-density bin (flat CDF): r = ci, so eps would be 0.0/0.0. The bin carries
+        ! no probability, so return the same edge the value branch returns. eps and x 
+        ! must agree: consumers interpolate angle on eps and energy on x, so a lower-edge 
+        ! x with a non-zero eps is inconsistent.
+        eps = ZERO
+
+      else
+        eps = (r - ci)/(self % cdf(idx+1) - ci)
+
+      end if
+      
+    end if
 
   end function sample
 
@@ -256,7 +288,7 @@ contains
 
     end select
 
-    ! Ensure that CDF ends with 1.0 to avoid random numbers sampled above the CDF table
+    ! Ensure that CDF ends with 1.0 to avoid random numbers sampled above the CDF table.
     self % cdf(size(self % cdf)) = ONE
 
   end subroutine initPdf
@@ -297,7 +329,9 @@ contains
     self % pdf = pdf
     self % cdf = cdf
 
-    ! Ensure that CDF ends with 1.0 to avoid random numbers sampled above the CDF table
+    ! Ensure that CDF begins with 0.0 and ends with 1.0 to avoid random numbers
+    ! sampled outside the CDF table.
+    self % cdf(1) = ZERO
     self % cdf(size(cdf)) = ONE
 
     select case (flag)
